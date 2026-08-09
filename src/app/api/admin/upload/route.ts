@@ -19,19 +19,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    // Validate mime type
-    const validMimes = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
-    if (!validMimes.includes(file.type)) {
+    // Determine extension
+    const extFromName = path.extname(file.name).toLowerCase();
+    const validExtensions = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+      ".svg",
+      ".gif",
+      ".ico",
+      ".avif",
+      ".bmp",
+    ];
+
+    const isImageMime =
+      !file.type ||
+      file.type.startsWith("image/") ||
+      file.type === "application/octet-stream" ||
+      file.type === "application/xml" ||
+      file.type === "text/xml";
+
+    if (!validExtensions.includes(extFromName) && !isImageMime) {
       return NextResponse.json(
-        { error: "Invalid file type. Please upload a JPEG, PNG, WEBP, or SVG image." },
+        { error: "Please upload a valid image file (PNG, JPG, SVG, WebP, GIF, ICO, AVIF)." },
         { status: 400 }
       );
     }
 
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
+    // Max 15MB
+    if (file.size > 15 * 1024 * 1024) {
       return NextResponse.json(
-        { error: "File size exceeds maximum limit of 10MB" },
+        { error: "File size exceeds maximum limit of 15MB" },
         { status: 400 }
       );
     }
@@ -39,31 +58,41 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
-
-    // Clean file name
-    const ext = path.extname(file.name) || ".png";
+    const ext = extFromName || (file.type === "image/svg+xml" ? ".svg" : ".png");
     const baseName = path
       .basename(file.name, ext)
       .replace(/[^a-zA-Z0-9_-]/g, "_")
       .toLowerCase();
-    const uniqueFileName = `${baseName}_${Date.now()}${ext}`;
-    const filePath = path.join(uploadsDir, uniqueFileName);
+    const uniqueFileName = `${baseName || "asset"}_${Date.now()}${ext}`;
 
-    await fs.writeFile(filePath, buffer);
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      await fs.mkdir(uploadsDir, { recursive: true });
+      const filePath = path.join(uploadsDir, uniqueFileName);
+      await fs.writeFile(filePath, buffer);
 
-    const publicUrl = `/uploads/${uniqueFileName}`;
+      const publicUrl = `/uploads/${uniqueFileName}`;
+      return NextResponse.json({
+        success: true,
+        url: publicUrl,
+        fileName: uniqueFileName,
+      });
+    } catch (fsErr) {
+      console.warn("Local disk write failed, falling back to data URL:", fsErr);
+      // Fallback to Base64 data URL if filesystem is read-only (e.g. Vercel serverless)
+      const mimeType = file.type || (ext === ".svg" ? "image/svg+xml" : "image/png");
+      const base64Data = `data:${mimeType};base64,${buffer.toString("base64")}`;
 
-    return NextResponse.json({
-      success: true,
-      url: publicUrl,
-      fileName: uniqueFileName,
-    });
+      return NextResponse.json({
+        success: true,
+        url: base64Data,
+        fileName: uniqueFileName,
+      });
+    }
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Failed to upload image" },
+      { error: error instanceof Error ? error.message : "Failed to process image upload" },
       { status: 500 }
     );
   }

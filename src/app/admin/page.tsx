@@ -14,7 +14,6 @@ import {
   ExternalLink,
   Film,
   Building2,
-  Layers,
   Search,
   Database,
   Inbox,
@@ -232,6 +231,7 @@ export default function AdminDashboardPage() {
     onSuccess: (url: string) => void
   ) => {
     const file = e.target.files?.[0];
+    const inputElement = e.target;
     if (!file) return;
 
     const form = new FormData();
@@ -248,9 +248,11 @@ export default function AdminDashboardPage() {
 
       onSuccess(data.url);
       setHasUnsavedChanges(true);
-      toast.success("Image uploaded successfully", { id: toastId });
+      toast.success("Image uploaded successfully! Click 'Save & Publish Live' to publish.", { id: toastId });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to upload image", { id: toastId });
+    } finally {
+      if (inputElement) inputElement.value = "";
     }
   };
 
@@ -395,7 +397,7 @@ export default function AdminDashboardPage() {
     const newTool: TechnicalSkill = {
       name: "New Software Tool",
       image_link: "/skills/davinci.png",
-      description: "Professional editing, color grading, or motion graphics software.",
+      description: "Professional editing, motion graphics, or 3D VFX tool.",
       color: "text-blue-400",
     };
     const currentList = content.skills.technicalSkills || [];
@@ -1042,6 +1044,7 @@ export default function AdminDashboardPage() {
                           src={`https://img.youtube.com/vi/${p.cover_image}/maxresdefault.jpg`}
                           alt={p.video_title}
                           fill
+                          unoptimized
                           className="object-cover"
                         />
                         {p.duration && (
@@ -1251,7 +1254,7 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ================================================================ */}
-          {/* 7. ABOUT & BENTO GRID TAB (with Profile Live Preview) */}
+          {/* 7. ABOUT & BENTO GRID TAB (Profile Live Preview & Uploader) */}
           {/* ================================================================ */}
           {activeSection === "about" && (
             <div className="space-y-6 animate-in fade-in duration-300">
@@ -1276,6 +1279,7 @@ export default function AdminDashboardPage() {
                         src={content.about.profile.image}
                         alt="Profile Preview"
                         fill
+                        unoptimized
                         className="object-cover"
                         onError={(e) => {
                           e.currentTarget.src = "/placeholder.svg";
@@ -1463,7 +1467,7 @@ export default function AdminDashboardPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="relative w-12 h-12 rounded-xl bg-white/5 p-2 flex items-center justify-center overflow-hidden border border-white/10">
-                        <Image src={c.logo} alt={c.name} fill className="object-contain p-1" />
+                        <Image src={c.logo} alt={c.name} fill unoptimized className="object-contain p-1" />
                       </div>
                       <button
                         onClick={() => handleDeleteClient(c.id)}
@@ -1568,6 +1572,7 @@ export default function AdminDashboardPage() {
                               src={tool.image_link}
                               alt={tool.name}
                               fill
+                              unoptimized
                               className="object-contain p-1.5"
                               onError={(e) => {
                                 e.currentTarget.src = "/placeholder.svg";
