@@ -26,11 +26,13 @@ import {
   ShieldCheck,
   KeyRound,
   Lock,
+  ImageIcon,
+  Wrench,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminSidebar from "@/components/admin/admin-sidebar";
 import ProjectModal from "@/components/admin/project-modal";
-import { SiteContent, ContactMessage } from "@/types/content";
+import { SiteContent, ContactMessage, TechnicalSkill } from "@/types/content";
 import { VideoProject, Client } from "@/types/videos";
 import Image from "next/image";
 import Link from "next/link";
@@ -224,7 +226,7 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Image Upload Helper
+  // Generic Image Upload Helper
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     onSuccess: (url: string) => void
@@ -387,6 +389,29 @@ export default function AdminDashboardPage() {
     });
   };
 
+  // Technical Software Tools Actions
+  const handleAddTool = () => {
+    if (!content) return;
+    const newTool: TechnicalSkill = {
+      name: "New Tool",
+      image_link: "/skills/davinci.png",
+      description: "Professional editing and motion design tool.",
+      color: "text-blue-400",
+    };
+    const updated = [...content.skills.technicalSkills, newTool];
+    updateContent("skills", { ...content.skills, technicalSkills: updated });
+    toast.success("New technical tool added");
+  };
+
+  const handleDeleteTool = (index: number, toolName: string) => {
+    if (!content) return;
+    if (confirm(`Are you sure you want to delete "${toolName}"?`)) {
+      const updated = content.skills.technicalSkills.filter((_, idx) => idx !== index);
+      updateContent("skills", { ...content.skills, technicalSkills: updated });
+      toast.success(`Tool "${toolName}" deleted`);
+    }
+  };
+
   if (isLoading || !content) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#030712]">
@@ -489,7 +514,6 @@ export default function AdminDashboardPage() {
           {/* ================================================================ */}
           {activeSection === "overview" && (
             <div className="space-y-8 animate-in fade-in duration-300">
-              {/* Welcome Banner */}
               <div className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/20 border border-white/10 shadow-2xl">
                 <div className="relative z-10">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-4">
@@ -713,7 +737,6 @@ export default function AdminDashboardPage() {
                           : "bg-white/[0.02] border-white/10 hover:border-white/20"
                       }`}
                     >
-                      {/* Message Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-md">
@@ -752,12 +775,10 @@ export default function AdminDashboardPage() {
                         </div>
                       </div>
 
-                      {/* Message Content */}
                       <div className="p-4 rounded-2xl bg-black/40 border border-white/5 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                         {msg.message}
                       </div>
 
-                      {/* Action Bar */}
                       <div className="flex items-center justify-between pt-2 border-t border-white/5">
                         <div className="flex items-center gap-2">
                           <button
@@ -781,7 +802,6 @@ export default function AdminDashboardPage() {
                           </a>
                         </div>
 
-                        {/* Delete Message Button */}
                         <button
                           onClick={() => handleDeleteMessage(messageId, msg.name)}
                           className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -1224,22 +1244,88 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ================================================================ */}
-          {/* 7. ABOUT & BENTO GRID TAB */}
+          {/* 7. ABOUT & BENTO GRID TAB (with Profile Live Preview) */}
           {/* ================================================================ */}
           {activeSection === "about" && (
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="border-b border-white/10 pb-4">
                 <h2 className="text-xl font-bold text-white">About Page & Bento Grid</h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Customize the profile bento card, experience statistics, philosophy quote & socials.
+                  Customize the profile bento card, live profile image, experience statistics, philosophy quote & socials.
                 </p>
               </div>
 
-              {/* Profile Card Settings */}
-              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+              {/* Profile Card Settings with Live Image Preview */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Hero Profile Bento Card
+                  Hero Profile Bento Card & Avatar
                 </h3>
+
+                {/* Profile Photo Live Preview & Uploader */}
+                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row items-center gap-6">
+                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-white/5 border-2 border-blue-500/40 shadow-xl flex-shrink-0 flex items-center justify-center group">
+                    {content.about.profile.image ? (
+                      <Image
+                        src={content.about.profile.image}
+                        alt="Profile Preview"
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          // Fallback if broken image URL
+                          e.currentTarget.src = "/placeholder.svg";
+                        }}
+                      />
+                    ) : (
+                      <ImageIcon className="text-gray-500" size={32} />
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white font-semibold">
+                      Live Preview
+                    </div>
+                  </div>
+
+                  <div className="flex-1 w-full space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        Profile Image Path / Live URL (Editable Anytime)
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={content.about.profile.image}
+                          onChange={(e) =>
+                            updateContent("about", {
+                              ...content.about,
+                              profile: { ...content.about.profile, image: e.target.value },
+                            })
+                          }
+                          placeholder="/itsmanuel.jpg or https://..."
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        />
+                        <label className="px-4 py-2 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-medium cursor-pointer flex items-center gap-1.5 transition-all">
+                          <Upload size={14} />
+                          <span>Upload Image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageUpload(e, (url) =>
+                                updateContent("about", {
+                                  ...content.about,
+                                  profile: { ...content.about.profile, image: url },
+                                })
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Upload a square portrait photo (PNG, JPG, WebP) or enter an existing local/web URL. Changes reflect immediately above and live across the portfolio.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-300 mb-1">
@@ -1290,42 +1376,6 @@ export default function AdminDashboardPage() {
                     }
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-300 mb-1">
-                    Profile Image Path / URL
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={content.about.profile.image}
-                      onChange={(e) =>
-                        updateContent("about", {
-                          ...content.about,
-                          profile: { ...content.about.profile, image: e.target.value },
-                        })
-                      }
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
-                    />
-                    <label className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium cursor-pointer flex items-center gap-1.5">
-                      <Upload size={14} />
-                      <span>Upload</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) =>
-                          handleImageUpload(e, (url) =>
-                            updateContent("about", {
-                              ...content.about,
-                              profile: { ...content.about.profile, image: url },
-                            })
-                          )
-                        }
-                      />
-                    </label>
-                  </div>
                 </div>
               </div>
 
@@ -1464,71 +1514,155 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ================================================================ */}
-          {/* 9. SKILLS & WORKFLOW TAB */}
+          {/* 9. SKILLS & WORKFLOW TAB (with Editable Tools & Live Logo Previews) */}
           {/* ================================================================ */}
           {activeSection === "skills" && (
             <div className="space-y-6 animate-in fade-in duration-300">
-              <div className="border-b border-white/10 pb-4">
-                <h2 className="text-xl font-bold text-white">Skills & Workflow</h2>
-                <p className="text-xs text-gray-400 mt-1">
-                  Manage software tools, specializations, achievements, and timeline workflow steps.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Skills, Software Tools & Workflow</h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Manage your technical editing tools, software logos, specializations, and step-by-step workflow.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleAddTool}
+                  className="py-2 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md w-fit"
+                >
+                  <Plus size={15} />
+                  <span>Add Software Tool</span>
+                </button>
               </div>
 
-              {/* Technical Skills */}
-              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Technical Software Tools
-                </h3>
-                <div className="grid sm:grid-cols-2 gap-4">
+              {/* Technical Software Tools with Live Logo Previews */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wrench size={18} className="text-blue-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Technical Software Tools ({content.skills.technicalSkills.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs text-gray-400">Live logo preview & image replacement</span>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
                   {content.skills.technicalSkills.map((tool, idx) => (
                     <div
-                      key={tool.name || idx}
-                      className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2"
+                      key={tool.name + idx}
+                      className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all space-y-4 relative group"
                     >
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="text"
-                          value={tool.name}
+                      {/* Top Bar: Live Logo Preview & Tool Name */}
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-14 h-14 rounded-xl bg-white/5 border border-white/10 p-2 flex items-center justify-center overflow-hidden flex-shrink-0 group/img">
+                          {tool.image_link ? (
+                            <Image
+                              src={tool.image_link}
+                              alt={tool.name}
+                              fill
+                              className="object-contain p-1.5"
+                              onError={(e) => {
+                                e.currentTarget.src = "/placeholder.svg";
+                              }}
+                            />
+                          ) : (
+                            <ImageIcon className="text-gray-500" size={24} />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <label className="block text-[10px] uppercase font-bold text-gray-400 mb-0.5">
+                            Tool Name
+                          </label>
+                          <input
+                            type="text"
+                            value={tool.name}
+                            onChange={(e) => {
+                              const updated = [...content.skills.technicalSkills];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              updateContent("skills", {
+                                ...content.skills,
+                                technicalSkills: updated,
+                              });
+                            }}
+                            placeholder="e.g. DaVinci Resolve"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                          />
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteTool(idx, tool.name)}
+                          className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 transition-colors cursor-pointer"
+                          title={`Delete ${tool.name}`}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+
+                      {/* Logo Image URL & Upload Button */}
+                      <div>
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">
+                          Logo Image URL / Path (or Upload New)
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={tool.image_link}
+                            onChange={(e) => {
+                              const updated = [...content.skills.technicalSkills];
+                              updated[idx] = { ...updated[idx], image_link: e.target.value };
+                              updateContent("skills", {
+                                ...content.skills,
+                                technicalSkills: updated,
+                              });
+                            }}
+                            placeholder="/skills/davinci.png or https://..."
+                            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-gray-300 focus:outline-none"
+                          />
+
+                          <label className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium cursor-pointer flex items-center gap-1 transition-all">
+                            <Upload size={13} />
+                            <span>Upload</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) =>
+                                handleImageUpload(e, (url) => {
+                                  const updated = [...content.skills.technicalSkills];
+                                  updated[idx] = { ...updated[idx], image_link: url };
+                                  updateContent("skills", {
+                                    ...content.skills,
+                                    technicalSkills: updated,
+                                  });
+                                })
+                              }
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-[10px] uppercase font-bold text-gray-400 mb-1">
+                          Tool Description
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={tool.description}
                           onChange={(e) => {
                             const updated = [...content.skills.technicalSkills];
-                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            updated[idx] = { ...updated[idx], description: e.target.value };
                             updateContent("skills", {
                               ...content.skills,
                               technicalSkills: updated,
                             });
                           }}
-                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm font-semibold text-white flex-1"
-                        />
-                        <input
-                          type="text"
-                          value={tool.color}
-                          onChange={(e) => {
-                            const updated = [...content.skills.technicalSkills];
-                            updated[idx] = { ...updated[idx], color: e.target.value };
-                            updateContent("skills", {
-                              ...content.skills,
-                              technicalSkills: updated,
-                            });
-                          }}
-                          placeholder="text-orange-400"
-                          className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-300 w-28"
+                          placeholder="Brief description of what you use this software for..."
+                          className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-gray-300 resize-none focus:outline-none"
                         />
                       </div>
-                      <input
-                        type="text"
-                        value={tool.description}
-                        onChange={(e) => {
-                          const updated = [...content.skills.technicalSkills];
-                          updated[idx] = { ...updated[idx], description: e.target.value };
-                          updateContent("skills", {
-                            ...content.skills,
-                            technicalSkills: updated,
-                          });
-                        }}
-                        placeholder="Tool description..."
-                        className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-gray-300"
-                      />
                     </div>
                   ))}
                 </div>
