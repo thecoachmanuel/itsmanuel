@@ -393,14 +393,15 @@ export default function AdminDashboardPage() {
   const handleAddTool = () => {
     if (!content) return;
     const newTool: TechnicalSkill = {
-      name: "New Tool",
+      name: "New Software Tool",
       image_link: "/skills/davinci.png",
-      description: "Professional editing and motion design tool.",
+      description: "Professional editing, color grading, or motion graphics software.",
       color: "text-blue-400",
     };
-    const updated = [...content.skills.technicalSkills, newTool];
+    const currentList = content.skills.technicalSkills || [];
+    const updated = [...currentList, newTool];
     updateContent("skills", { ...content.skills, technicalSkills: updated });
-    toast.success("New technical tool added");
+    toast.success("New technical software tool added! Edit details and click 'Save & Publish Live'.");
   };
 
   const handleDeleteTool = (index: number, toolName: string) => {
@@ -469,7 +470,11 @@ export default function AdminDashboardPage() {
         <div className="sticky top-0 z-30 bg-[#030712]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h1 className="text-base sm:text-lg font-bold text-white tracking-tight capitalize">
-              {activeSection === "messages" ? "Messages & Inquiries" : activeSection.replace("-", " ")}
+              {activeSection === "messages"
+                ? "Messages & Inquiries"
+                : activeSection === "skills"
+                ? "Skills & Software Tools"
+                : activeSection.replace("-", " ")}
             </h1>
             {hasUnsavedChanges && (
               <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-medium animate-pulse">
@@ -524,7 +529,7 @@ export default function AdminDashboardPage() {
                     Welcome to your Portfolio CMS
                   </h2>
                   <p className="text-gray-300 text-sm sm:text-base max-w-2xl mt-2 leading-relaxed font-light">
-                    Every section, project, skill, and contact detail across the portfolio is stored in{" "}
+                    Every section, project, technical tool, skill, and contact detail across the portfolio is stored in{" "}
                     <span className="text-blue-400 font-medium">MongoDB</span>. All edits take effect instantly on your public website.
                   </p>
                 </div>
@@ -568,17 +573,19 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div
-                  onClick={() => setActiveSection("clients")}
-                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-all cursor-pointer group"
+                  onClick={() => setActiveSection("skills")}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-blue-500/40 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-400 group-hover:text-emerald-300">
-                      Trusted Clients
+                    <span className="text-xs font-medium text-gray-400 group-hover:text-blue-300">
+                      Software Tools
                     </span>
-                    <Building2 size={18} className="text-emerald-400" />
+                    <Wrench size={18} className="text-blue-400" />
                   </div>
-                  <p className="text-3xl font-black text-white mt-3">{content.clients.length}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Marquee partners</p>
+                  <p className="text-3xl font-black text-white mt-3">
+                    {content.skills.technicalSkills.length}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-1">Editing & 3D apps</p>
                 </div>
 
                 <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
@@ -1159,7 +1166,7 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ================================================================ */}
-          {/* 6. SERVICES SECTION TAB ("What I Can Do") */}
+          {/* 6. SERVICES SECTION TAB */}
           {/* ================================================================ */}
           {activeSection === "services" && (
             <div className="space-y-6 animate-in fade-in duration-300">
@@ -1271,7 +1278,6 @@ export default function AdminDashboardPage() {
                         fill
                         className="object-cover"
                         onError={(e) => {
-                          // Fallback if broken image URL
                           e.currentTarget.src = "/placeholder.svg";
                         }}
                       />
@@ -1514,7 +1520,7 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ================================================================ */}
-          {/* 9. SKILLS & WORKFLOW TAB (with Editable Tools & Live Logo Previews) */}
+          {/* 9. SKILLS & WORKFLOW TAB (Technical Tools Add, Edit, Logo Preview) */}
           {/* ================================================================ */}
           {activeSection === "skills" && (
             <div className="space-y-6 animate-in fade-in duration-300">
@@ -1522,20 +1528,21 @@ export default function AdminDashboardPage() {
                 <div>
                   <h2 className="text-xl font-bold text-white">Skills, Software Tools & Workflow</h2>
                   <p className="text-xs text-gray-400 mt-1">
-                    Manage your technical editing tools, software logos, specializations, and step-by-step workflow.
+                    Manage technical editing software tools, live logos, specializations, and workflow timeline steps.
                   </p>
                 </div>
 
+                {/* Prominent Add Software Tool Button */}
                 <button
                   onClick={handleAddTool}
-                  className="py-2 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md w-fit"
+                  className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer shadow-lg shadow-blue-600/30 w-fit"
                 >
-                  <Plus size={15} />
+                  <Plus size={16} />
                   <span>Add Software Tool</span>
                 </button>
               </div>
 
-              {/* Technical Software Tools with Live Logo Previews */}
+              {/* Technical Software Tools Grid */}
               <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1544,7 +1551,7 @@ export default function AdminDashboardPage() {
                       Technical Software Tools ({content.skills.technicalSkills.length})
                     </h3>
                   </div>
-                  <span className="text-xs text-gray-400">Live logo preview & image replacement</span>
+                  <span className="text-xs text-gray-400">Live logo previews & instant image uploader</span>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4">
@@ -1665,6 +1672,20 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
                   ))}
+
+                  {/* Dashed Add Another Tool Card */}
+                  <button
+                    onClick={handleAddTool}
+                    className="p-8 rounded-2xl border-2 border-dashed border-white/15 hover:border-blue-500/50 bg-white/[0.01] hover:bg-blue-600/5 transition-all flex flex-col items-center justify-center gap-3 text-gray-400 hover:text-white cursor-pointer min-h-[220px]"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-blue-400 shadow-md">
+                      <Plus size={24} />
+                    </div>
+                    <div className="text-center">
+                      <span className="font-bold text-sm block text-white">Add Another Software Tool</span>
+                      <span className="text-xs text-gray-500">Add Blender, Cinema 4D, Audition, etc.</span>
+                    </div>
+                  </button>
                 </div>
               </div>
 
