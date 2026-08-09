@@ -3,21 +3,25 @@ import MouseMoveEffect from "@/components/mouse-move-effect";
 import Hero from "@/components/hero";
 import GlassmorphismCard from "@/components/glassmorphism-card";
 import ProjectGrid from "@/components/project-grid";
+import { getSiteContent } from "@/lib/content-store";
 import {
   getVideoCategoriesWithCountIncludingAll,
-  getAllVideoProjectsFlattened
+  getAllVideoProjectsFlattened,
 } from "@/lib/helper";
 
-export default function HomePage() {
-  // Fetch data on the server
-  const categories = getVideoCategoriesWithCountIncludingAll();
-  const allProjects = getAllVideoProjectsFlattened(); // We need all projects initially for the grid to filter client-side
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  // Fetch live dynamic data from MongoDB
+  const siteContent = await getSiteContent();
+  const allProjects = getAllVideoProjectsFlattened(siteContent.projects);
+  const categories = getVideoCategoriesWithCountIncludingAll(siteContent.projects);
 
   return (
     <div className="min-h-screen relative overflow-hidden">
       <MouseMoveEffect />
 
-      <Hero />
+      <Hero content={siteContent.hero} />
 
       {/* Projects Section */}
       <section id="projects" className="py-20 px-4 sm:px-6">
@@ -28,17 +32,21 @@ export default function HomePage() {
 
             <h2 className="text-5xl md:text-7xl font-bold mb-8 text-white tracking-tight relative z-10">
               <span className="bg-gradient-to-r from-white via-blue-100 to-gray-400 bg-clip-text text-transparent">
-                My Video Projects
+                {siteContent.projectsSection.title}
               </span>
             </h2>
             <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto font-light leading-relaxed">
-              From smooth transitions to precise audio syncing and dynamic
-              animations — I focus on making your content not just polished, but
-              <span className="text-blue-400 font-medium"> powerful</span>.
+              {siteContent.projectsSection.subtitle}{" "}
+              <span className="text-blue-400 font-medium">
+                {siteContent.projectsSection.subtitleHighlight}
+              </span>
+              .
             </p>
           </div>
 
-          <Suspense fallback={<div className="text-center py-20 text-gray-400">Loading projects...</div>}>
+          <Suspense
+            fallback={<div className="text-center py-20 text-gray-400">Loading projects...</div>}
+          >
             <ProjectGrid initialCategories={categories} initialProjects={allProjects} />
           </Suspense>
         </div>
@@ -50,48 +58,17 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-              What I Can Do <span className="text-blue-500">for You</span>
+              {siteContent.servicesSection.title}{" "}
+              <span className="text-blue-500">{siteContent.servicesSection.titleHighlight}</span>
             </h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-              If you're looking for someone who blends creativity with technical
-              skill, communicates clearly, and truly cares about results.
+              {siteContent.servicesSection.subtitle}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                title: "YouTube Editing",
-                description: "Engaging edits optimized for retention with perfect pacing.",
-                icon: "🎬",
-              },
-              {
-                title: "Course Content",
-                description: "Clear, educational content with professional polish.",
-                icon: "📚",
-              },
-              {
-                title: "Motion Graphics",
-                description: "Eye-catching animations that enhance your storytelling.",
-                icon: "🌀",
-              },
-              {
-                title: "Color Grading",
-                description: "Cinematic looks that give your videos a premium feel.",
-                icon: "🎨",
-              },
-              {
-                title: "Logo Animation",
-                description: "Professional branding elements that stand out.",
-                icon: "🏷️",
-              },
-              {
-                title: "Audio Engineering",
-                description: "Crystal clear audio mix with noise reduction.",
-                icon: "🎵",
-              },
-            ].map((service, index) => (
-              <div key={service.title} className="h-full">
+            {siteContent.servicesSection.services.map((service) => (
+              <div key={service.id || service.title} className="h-full">
                 <GlassmorphismCard className="p-8 h-full flex flex-col items-center text-center group hover:bg-white/[0.04] hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] transition-all duration-300">
                   <div className="text-5xl mb-6 bg-white/5 p-4 rounded-2xl group-hover:scale-110 transition-transform duration-300 border border-white/5">
                     {service.icon}

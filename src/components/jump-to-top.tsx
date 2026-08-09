@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { m, AnimatePresence  } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { m, AnimatePresence } from "framer-motion";
 import { ArrowUp } from "lucide-react";
 
 export default function JumpToTop() {
   const [isVisible, setIsVisible] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const toggleVisibility = () => {
@@ -19,6 +21,10 @@ export default function JumpToTop() {
     window.addEventListener("scroll", toggleVisibility);
     return () => window.removeEventListener("scroll", toggleVisibility);
   }, []);
+
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const scrollToTop = () => {
     window.scrollTo({

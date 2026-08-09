@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { m, AnimatePresence  } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { Clapperboard } from "./ui/Clapperboard";
 
@@ -27,27 +27,41 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Do not render public navbar on admin pages
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <m.nav
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed top-0 left-0 right-0 z-[100] flex justify-center transition-all duration-300 ${scrolled ? "pt-4 pb-0" : "pt-5 pb-0"
-        }`}
+      className={`fixed top-0 left-0 right-0 z-[100] flex justify-center transition-all duration-300 ${
+        scrolled ? "pt-4 pb-0" : "pt-5 pb-0"
+      }`}
     >
       <div
         className={`
           flex flex-col items-center
           px-6 sm:px-8 py-3
           transition-all duration-500 ease-[cubic-bezier(0.25,0.8,0.25,1)] border
-          ${scrolled || isOpen
-            ? "w-[95%] max-w-5xl rounded-3xl backdrop-blur-xl md:backdrop-blur-3xl bg-white/5 border border-white/10 shadow-2xl"
-            : "w-full max-w-7xl bg-transparent border-transparent"
+          ${
+            scrolled || isOpen
+              ? "w-[95%] max-w-5xl rounded-3xl backdrop-blur-xl md:backdrop-blur-3xl bg-white/5 border border-white/10 shadow-2xl"
+              : "w-full max-w-7xl bg-transparent border-transparent"
           }
-        `}>
+        `}
+      >
         <div className="w-full flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-3 group">
-            <div className={`p-2 rounded-lg transition-all duration-300 ${scrolled ? "bg-white/5 group-hover:bg-blue-600" : "bg-white/10 group-hover:bg-blue-600"}`}>
+            <div
+              className={`p-2 rounded-lg transition-all duration-300 ${
+                scrolled
+                  ? "bg-white/5 group-hover:bg-blue-600"
+                  : "bg-white/10 group-hover:bg-blue-600"
+              }`}
+            >
               <Clapperboard />
             </div>
             <span className="text-xl font-bold tracking-tight text-white group-hover:text-blue-200 transition-colors">
@@ -66,7 +80,11 @@ export default function Navbar() {
                     href={item.href}
                     className="relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 group overflow-hidden"
                   >
-                    <span className={`relative z-10 ${isActive ? "text-white" : "text-gray-400 group-hover:text-white"}`}>
+                    <span
+                      className={`relative z-10 ${
+                        isActive ? "text-white" : "text-gray-400 group-hover:text-white"
+                      }`}
+                    >
                       {item.name}
                     </span>
 
@@ -98,7 +116,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown - Unified Container */}
+        {/* Mobile Navigation Dropdown */}
         <AnimatePresence>
           {isOpen && (
             <m.div
@@ -119,10 +137,11 @@ export default function Navbar() {
                     <Link
                       href={item.href}
                       onClick={() => setIsOpen(false)}
-                      className={`block px-4 py-3 rounded-xl text-base font-medium transition-all ${pathname === item.href
-                        ? "text-white bg-blue-600/20 border border-blue-500/30"
-                        : "text-gray-400 hover:text-white hover:bg-white/5"
-                        }`}
+                      className={`block px-4 py-3 rounded-xl text-base font-medium transition-all ${
+                        pathname === item.href
+                          ? "text-white bg-blue-600/20 border border-blue-500/30"
+                          : "text-gray-400 hover:text-white hover:bg-white/5"
+                      }`}
                     >
                       {item.name}
                     </Link>

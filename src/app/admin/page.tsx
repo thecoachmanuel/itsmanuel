@@ -1,0 +1,1755 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import {
+  Save,
+  Loader2,
+  Plus,
+  Trash2,
+  Edit2,
+  RefreshCw,
+  Download,
+  Upload,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+  ExternalLink,
+  Film,
+  Building2,
+  Award,
+  Layers,
+  Search,
+  Database,
+  Inbox,
+  Mail,
+  Clock,
+  Send,
+  MessageSquare,
+  Check,
+} from "lucide-react";
+import { toast } from "sonner";
+import AdminSidebar from "@/components/admin/admin-sidebar";
+import ProjectModal from "@/components/admin/project-modal";
+import { SiteContent, ContactMessage } from "@/types/content";
+import { VideoProject, Client } from "@/types/videos";
+import Image from "next/image";
+import Link from "next/link";
+
+export default function AdminDashboardPage() {
+  const [activeSection, setActiveSection] = useState("overview");
+  const [content, setContent] = useState<SiteContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [dbStatus, setDbStatus] = useState<{
+    connected: boolean;
+    databaseName?: string | null;
+    latencyMs?: number;
+    documentCount?: number;
+  }>({ connected: false });
+
+  // Contact Messages State
+  const [messages, setMessages] = useState<ContactMessage[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [messageFilter, setMessageFilter] = useState<"all" | "unread" | "read">("all");
+  const [messageSearch, setMessageSearch] = useState("");
+
+  // Project Modal State
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<VideoProject | null>(null);
+  const [projectSearch, setProjectSearch] = useState("");
+  const [projectCategoryFilter, setProjectCategoryFilter] = useState("All");
+
+  // New Category input
+  const [newCategoryInput, setNewCategoryInput] = useState("");
+
+  // Fetch Full Site Content, DB status, and Contact Messages
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [contentRes, dbRes, messagesRes] = await Promise.all([
+        fetch("/api/admin/content"),
+        fetch("/api/admin/db-status"),
+        fetch("/api/admin/messages"),
+      ]);
+
+      const contentData = await contentRes.json();
+      const dbData = await dbRes.json();
+      const messagesData = await messagesRes.json();
+
+      if (contentRes.ok && contentData.content) {
+        setContent(contentData.content);
+      } else {
+        toast.error(contentData.error || "Failed to load content");
+      }
+
+      if (dbRes.ok) {
+        setDbStatus(dbData);
+      }
+
+      if (messagesRes.ok && messagesData.messages) {
+        setMessages(messagesData.messages);
+        setUnreadCount(messagesData.unreadCount || 0);
+      }
+    } catch {
+      toast.error("Failed to connect to backend server");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Save changes to MongoDB
+  const handleSave = async () => {
+    if (!content) return;
+    setIsSaving(true);
+
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "full", data: content }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        toast.success("All changes saved to MongoDB & published live!");
+        setContent(result.content);
+        setHasUnsavedChanges(false);
+      } else {
+        toast.error(result.error || "Failed to save changes");
+      }
+    } catch {
+      toast.error("Network error while saving changes");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Helper to mutate state and mark unsaved
+  const updateContent = <K extends keyof SiteContent>(
+    key: K,
+    value: SiteContent[K]
+  ) => {
+    if (!content) return;
+    setContent({ ...content, [key]: value });
+    setHasUnsavedChanges(true);
+  };
+
+  // Export JSON Backup
+  const handleExportJSON = () => {
+    if (!content) return;
+    const blob = new Blob([JSON.stringify(content, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `itsmanuel-content-backup-${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Backup downloaded successfully");
+  };
+
+  // Import JSON Backup
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        setContent(parsed);
+        setHasUnsavedChanges(true);
+        toast.success("JSON backup loaded! Review and click Save Changes.");
+      } catch {
+        toast.error("Invalid JSON file format");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Image Upload Helper for generic section fields
+  const handleImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    onSuccess: (url: string) => void
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const form = new FormData();
+    form.append("file", file);
+
+    const toastId = toast.loading("Uploading image asset...");
+    try {
+      const res = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      onSuccess(data.url);
+      setHasUnsavedChanges(true);
+      toast.success("Image uploaded successfully", { id: toastId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload image", { id: toastId });
+    }
+  };
+
+  // Messages CRUD Actions
+  const handleDeleteMessage = async (id: string, senderName: string) => {
+    if (!confirm(`Are you sure you want to delete message from "${senderName}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/messages?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setMessages((prev) => prev.filter((m) => m._id !== id && m.id !== id));
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+        toast.success(`Message from "${senderName}" deleted`);
+      } else {
+        toast.error("Failed to delete message");
+      }
+    } catch {
+      toast.error("Error connecting to server to delete message");
+    }
+  };
+
+  const handleToggleRead = async (id: string, currentRead: boolean) => {
+    const newReadStatus = !currentRead;
+    try {
+      const res = await fetch("/api/admin/messages", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, read: newReadStatus }),
+      });
+
+      if (res.ok) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m._id === id || m.id === id ? { ...m, read: newReadStatus } : m
+          )
+        );
+        setUnreadCount((prev) =>
+          newReadStatus ? Math.max(0, prev - 1) : prev + 1
+        );
+      }
+    } catch {
+      toast.error("Failed to update message status");
+    }
+  };
+
+  // Project CRUD Actions
+  const handleSaveProject = (savedProject: VideoProject) => {
+    if (!content) return;
+    const existingIndex = content.projects.findIndex((p) => p.id === savedProject.id);
+
+    let updatedProjects;
+    if (existingIndex >= 0) {
+      updatedProjects = [...content.projects];
+      updatedProjects[existingIndex] = savedProject;
+      toast.success(`Project "${savedProject.video_title}" updated`);
+    } else {
+      updatedProjects = [savedProject, ...content.projects];
+      toast.success(`Project "${savedProject.video_title}" added`);
+    }
+
+    updateContent("projects", updatedProjects);
+  };
+
+  const handleDeleteProject = (id: string, title: string) => {
+    if (!content) return;
+    if (confirm(`Are you sure you want to delete "${title}"?`)) {
+      const updated = content.projects.filter((p) => p.id !== id);
+      updateContent("projects", updated);
+      toast.success(`Project "${title}" deleted`);
+    }
+  };
+
+  // Categories Actions
+  const handleAddCategory = () => {
+    if (!content || !newCategoryInput.trim()) return;
+    const trimmed = newCategoryInput.trim();
+    if (!content.categories.includes(trimmed)) {
+      updateContent("categories", [...content.categories, trimmed]);
+      toast.success(`Category "${trimmed}" added`);
+    }
+    setNewCategoryInput("");
+  };
+
+  const handleDeleteCategory = (cat: string) => {
+    if (!content) return;
+    if (cat === "All") {
+      toast.error("Cannot remove the default 'All' category");
+      return;
+    }
+    if (confirm(`Delete category "${cat}"? Projects with this category will not be deleted.`)) {
+      updateContent("categories", content.categories.filter((c) => c !== cat));
+      toast.success(`Category "${cat}" removed`);
+    }
+  };
+
+  // Clients Actions
+  const handleAddClient = () => {
+    if (!content) return;
+    const newClient: Client = {
+      id: `client-${Date.now()}`,
+      name: "New Client",
+      logo: "/companies/sl-logo.png",
+    };
+    updateContent("clients", [...content.clients, newClient]);
+  };
+
+  const handleDeleteClient = (id: string) => {
+    if (!content) return;
+    updateContent("clients", content.clients.filter((c) => c.id !== id));
+  };
+
+  // Services Actions
+  const handleAddService = () => {
+    if (!content) return;
+    const newService = {
+      id: `service-${Date.now()}`,
+      title: "New Video Service",
+      description: "Detailed description of what you deliver for clients.",
+      icon: "🎬",
+    };
+    updateContent("servicesSection", {
+      ...content.servicesSection,
+      services: [...content.servicesSection.services, newService],
+    });
+  };
+
+  const handleDeleteService = (id: string) => {
+    if (!content) return;
+    updateContent("servicesSection", {
+      ...content.servicesSection,
+      services: content.servicesSection.services.filter((s) => s.id !== id),
+    });
+  };
+
+  if (isLoading || !content) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#030712]">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+            <Loader2 className="w-7 h-7 animate-spin" />
+          </div>
+          <p className="text-white font-medium text-lg">Connecting to MongoDB & Loading CMS...</p>
+          <p className="text-xs text-gray-400">Synchronizing database models & messages</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Filtered projects
+  const filteredProjects = content.projects.filter((p) => {
+    const matchesSearch =
+      p.video_title.toLowerCase().includes(projectSearch.toLowerCase()) ||
+      p.client_name.toLowerCase().includes(projectSearch.toLowerCase()) ||
+      p.id.toLowerCase().includes(projectSearch.toLowerCase());
+    const matchesCat =
+      projectCategoryFilter === "All" || p.category.includes(projectCategoryFilter);
+    return matchesSearch && matchesCat;
+  });
+
+  // Filtered messages
+  const filteredMessages = messages.filter((m) => {
+    const matchesFilter =
+      messageFilter === "all" ||
+      (messageFilter === "unread" && !m.read) ||
+      (messageFilter === "read" && m.read);
+
+    const matchesSearch =
+      m.name.toLowerCase().includes(messageSearch.toLowerCase()) ||
+      m.email.toLowerCase().includes(messageSearch.toLowerCase()) ||
+      m.message.toLowerCase().includes(messageSearch.toLowerCase()) ||
+      (m.projectType && m.projectType.toLowerCase().includes(messageSearch.toLowerCase()));
+
+    return matchesFilter && matchesSearch;
+  });
+
+  return (
+    <div className="min-h-screen bg-[#030712] text-white flex flex-col lg:flex-row">
+      {/* Sidebar Navigation */}
+      <AdminSidebar
+        activeSection={activeSection}
+        onSelectSection={setActiveSection}
+        dbStatus={dbStatus}
+        unreadMessagesCount={unreadCount}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 lg:pl-72 flex flex-col min-h-screen">
+        {/* Sticky Header with Save Button & Status */}
+        <div className="sticky top-0 z-30 bg-[#030712]/90 backdrop-blur-xl border-b border-white/10 px-4 sm:px-8 py-3.5 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight capitalize">
+              {activeSection === "messages" ? "Messages & Inquiries" : activeSection.replace("-", " ")}
+            </h1>
+            {hasUnsavedChanges && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-medium animate-pulse">
+                Unsaved Changes
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={loadData}
+              title="Refresh from MongoDB"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-all cursor-pointer"
+            >
+              <RefreshCw size={16} />
+            </button>
+
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="py-2 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs sm:text-sm shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  <span>Save & Publish Live</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Section Body */}
+        <div className="p-4 sm:p-8 max-w-6xl w-full mx-auto space-y-8 flex-1">
+          {/* ================================================================ */}
+          {/* 1. OVERVIEW & STATS TAB */}
+          {/* ================================================================ */}
+          {activeSection === "overview" && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              {/* Welcome Banner */}
+              <div className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-r from-blue-900/30 via-indigo-900/20 to-purple-900/20 border border-white/10 shadow-2xl">
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-4">
+                    <Sparkles size={14} />
+                    Live Content Control Center
+                  </div>
+                  <h2 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
+                    Welcome to your Portfolio CMS
+                  </h2>
+                  <p className="text-gray-300 text-sm sm:text-base max-w-2xl mt-2 leading-relaxed font-light">
+                    Every section, project, skill, and contact detail across the portfolio is stored in{" "}
+                    <span className="text-blue-400 font-medium">MongoDB</span>. All edits take effect instantly on your public website.
+                  </p>
+                </div>
+              </div>
+
+              {/* Metrics Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div
+                  onClick={() => setActiveSection("messages")}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-blue-500/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-400 group-hover:text-blue-300">
+                      Inquiries
+                    </span>
+                    <Inbox size={18} className="text-blue-400" />
+                  </div>
+                  <div className="flex items-baseline gap-2 mt-3">
+                    <p className="text-3xl font-black text-white">{messages.length}</p>
+                    {unreadCount > 0 && (
+                      <span className="text-xs font-bold text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-full">
+                        {unreadCount} new
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">Captured leads</p>
+                </div>
+
+                <div
+                  onClick={() => setActiveSection("projects")}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-purple-500/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-400 group-hover:text-purple-300">
+                      Total Projects
+                    </span>
+                    <Film size={18} className="text-purple-400" />
+                  </div>
+                  <p className="text-3xl font-black text-white mt-3">{content.projects.length}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Across all categories</p>
+                </div>
+
+                <div
+                  onClick={() => setActiveSection("clients")}
+                  className="p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-400 group-hover:text-emerald-300">
+                      Trusted Clients
+                    </span>
+                    <Building2 size={18} className="text-emerald-400" />
+                  </div>
+                  <p className="text-3xl font-black text-white mt-3">{content.clients.length}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Marquee partners</p>
+                </div>
+
+                <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-400">Database Status</span>
+                    <Database size={18} className="text-indigo-400" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <span
+                      className={`w-3 h-3 rounded-full ${
+                        dbStatus.connected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                      }`}
+                    />
+                    <p className="text-base font-bold text-white">
+                      {dbStatus.connected ? "MongoDB Live" : "Local Cache"}
+                    </p>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {dbStatus.connected ? `Latency: ${dbStatus.latencyMs}ms` : "Resilient storage"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Actions & Backup Tools */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-base font-bold text-white">Data Management & Backups</h3>
+                <p className="text-xs text-gray-400">
+                  Export complete site data to JSON or restore from a previously downloaded snapshot.
+                </p>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  <button
+                    onClick={handleExportJSON}
+                    className="flex items-center gap-2 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-medium border border-white/10 transition-all cursor-pointer"
+                  >
+                    <Download size={15} />
+                    <span>Download Full Backup (JSON)</span>
+                  </button>
+
+                  <label className="flex items-center gap-2 py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-medium border border-white/10 transition-all cursor-pointer">
+                    <Upload size={15} />
+                    <span>Restore from JSON File</span>
+                    <input
+                      type="file"
+                      accept=".json"
+                      className="hidden"
+                      onChange={handleImportJSON}
+                    />
+                  </label>
+
+                  <Link
+                    href="/"
+                    target="_blank"
+                    className="flex items-center gap-2 py-2.5 px-4 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 text-xs font-medium border border-blue-500/30 transition-all ml-auto"
+                  >
+                    <ExternalLink size={15} />
+                    <span>View Public Portfolio</span>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 2. MESSAGES & INQUIRIES TAB */}
+          {/* ================================================================ */}
+          {activeSection === "messages" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-white">Contact Messages & Inquiries</h2>
+                    {unreadCount > 0 && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-xs font-bold shadow-sm shadow-blue-500/40">
+                        {unreadCount} Unread
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Every message submitted on your contact page is captured in MongoDB. You can read, reply, and delete anytime.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">{messages.length} Total Messages</span>
+                </div>
+              </div>
+
+              {/* Filters & Search */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={messageSearch}
+                    onChange={(e) => setMessageSearch(e.target.value)}
+                    placeholder="Search by sender, email, project type, or content..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                </div>
+
+                <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
+                  <button
+                    onClick={() => setMessageFilter("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      messageFilter === "all"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    All ({messages.length})
+                  </button>
+                  <button
+                    onClick={() => setMessageFilter("unread")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      messageFilter === "unread"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Unread ({unreadCount})
+                  </button>
+                  <button
+                    onClick={() => setMessageFilter("read")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      messageFilter === "read"
+                        ? "bg-blue-600 text-white shadow-sm"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                  >
+                    Read ({messages.length - unreadCount})
+                  </button>
+                </div>
+              </div>
+
+              {/* Messages List */}
+              <div className="space-y-4">
+                {filteredMessages.map((msg) => {
+                  const messageId = msg._id || msg.id || "";
+                  const dateStr = msg.createdAt
+                    ? new Date(msg.createdAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })
+                    : "Recently";
+
+                  return (
+                    <div
+                      key={messageId}
+                      className={`p-5 sm:p-6 rounded-3xl border transition-all space-y-4 ${
+                        !msg.read
+                          ? "bg-blue-950/20 border-blue-500/30 shadow-lg shadow-blue-900/10"
+                          : "bg-white/[0.02] border-white/10 hover:border-white/20"
+                      }`}
+                    >
+                      {/* Message Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-sm shadow-md">
+                            {msg.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-white text-base">{msg.name}</h3>
+                              {!msg.read && (
+                                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" title="Unread" />
+                              )}
+                            </div>
+                            <a
+                              href={`mailto:${msg.email}`}
+                              className="text-xs text-blue-400 hover:underline inline-flex items-center gap-1"
+                            >
+                              <Mail size={12} />
+                              <span>{msg.email}</span>
+                            </a>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {msg.projectType && (
+                            <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 font-medium">
+                              {msg.projectType}
+                            </span>
+                          )}
+                          {msg.timeline && (
+                            <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-gray-300 font-medium">
+                              <Clock size={11} className="inline mr-1 text-gray-400" />
+                              {msg.timeline}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-500">{dateStr}</span>
+                        </div>
+                      </div>
+
+                      {/* Message Content */}
+                      <div className="p-4 rounded-2xl bg-black/40 border border-white/5 text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                        {msg.message}
+                      </div>
+
+                      {/* Action Bar */}
+                      <div className="flex items-center justify-between pt-2 border-t border-white/5">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleRead(messageId, msg.read)}
+                            className="text-xs text-gray-400 hover:text-white px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Check size={14} className={msg.read ? "text-emerald-400" : "text-gray-400"} />
+                            <span>{msg.read ? "Mark as Unread" : "Mark as Read"}</span>
+                          </button>
+
+                          <a
+                            href={`mailto:${msg.email}?subject=Re:%20${encodeURIComponent(
+                              msg.projectType || "Your Inquiry"
+                            )}&body=Hi%20${encodeURIComponent(
+                              msg.name
+                            )},%0A%0AThank%20you%20for%20reaching%20out!`}
+                            className="text-xs text-blue-300 hover:text-white px-3 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 transition-colors flex items-center gap-1.5"
+                          >
+                            <Send size={13} />
+                            <span>Reply via Email</span>
+                          </a>
+                        </div>
+
+                        {/* Delete Message Button */}
+                        <button
+                          onClick={() => handleDeleteMessage(messageId, msg.name)}
+                          className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Delete this message"
+                        >
+                          <Trash2 size={13} />
+                          <span>Delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {filteredMessages.length === 0 && (
+                  <div className="text-center py-16 border border-dashed border-white/10 rounded-3xl text-gray-400 space-y-2">
+                    <MessageSquare className="mx-auto opacity-30" size={40} />
+                    <p className="text-sm font-medium text-white">No messages found</p>
+                    <p className="text-xs text-gray-500">
+                      When visitors send inquiries on your contact page, they will appear here in real time.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 3. HERO & INTRO SECTION TAB */}
+          {/* ================================================================ */}
+          {activeSection === "hero" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">Hero & Introduction Section</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Customize the main landing header, animated badge, headline typography & CTA buttons.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Status Badge Text
+                  </label>
+                  <input
+                    type="text"
+                    value={content.hero.badgeText}
+                    onChange={(e) =>
+                      updateContent("hero", { ...content.hero, badgeText: e.target.value })
+                    }
+                    placeholder="e.g. Available for Hire"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Headline Line 1 (White Gradient)
+                    </label>
+                    <input
+                      type="text"
+                      value={content.hero.titleLine1}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, titleLine1: e.target.value })
+                      }
+                      placeholder="e.g. CINEMATIC"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Headline Line 2 (Color Gradient)
+                    </label>
+                    <input
+                      type="text"
+                      value={content.hero.titleLine2}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, titleLine2: e.target.value })
+                      }
+                      placeholder="e.g. EDITOR"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Hero Subtitle Text
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={content.hero.subtitle}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, subtitle: e.target.value })
+                      }
+                      placeholder="Turning raw footage into visual stories..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Highlighted Phrase (Glowing)
+                    </label>
+                    <input
+                      type="text"
+                      value={content.hero.subtitleHighlight}
+                      onChange={(e) =>
+                        updateContent("hero", {
+                          ...content.hero,
+                          subtitleHighlight: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. cinematic magic"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase text-gray-300">Primary CTA Button</h4>
+                    <input
+                      type="text"
+                      value={content.hero.primaryCtaText}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, primaryCtaText: e.target.value })
+                      }
+                      placeholder="Button Text (e.g. View Work)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={content.hero.primaryCtaLink}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, primaryCtaLink: e.target.value })
+                      }
+                      placeholder="Button Link (e.g. #projects)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-gray-300 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase text-gray-300">Secondary CTA Button</h4>
+                    <input
+                      type="text"
+                      value={content.hero.secondaryCtaText}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, secondaryCtaText: e.target.value })
+                      }
+                      placeholder="Button Text (e.g. Contact Me)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={content.hero.secondaryCtaLink}
+                      onChange={(e) =>
+                        updateContent("hero", { ...content.hero, secondaryCtaLink: e.target.value })
+                      }
+                      placeholder="Button Link (e.g. /contact)"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-gray-300 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 4. PROJECTS CRUD TAB */}
+          {/* ================================================================ */}
+          {activeSection === "projects" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Video Projects Manager</h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Manage portfolio videos, YouTube links, client credits, and gallery images ({content.projects.length} Total).
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingProject(null);
+                    setIsProjectModalOpen(true);
+                  }}
+                  className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-semibold text-xs sm:text-sm shadow-md flex items-center gap-2 cursor-pointer w-fit"
+                >
+                  <Plus size={16} />
+                  <span>Add New Project</span>
+                </button>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    placeholder="Search projects by title, client, or ID..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                </div>
+
+                <select
+                  value={projectCategoryFilter}
+                  onChange={(e) => setProjectCategoryFilter(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                >
+                  {content.categories.map((c) => (
+                    <option key={c} value={c} className="bg-gray-900">
+                      Category: {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Projects Grid / Cards */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {filteredProjects.map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 hover:border-white/20 transition-all flex flex-col justify-between gap-4 group"
+                  >
+                    <div className="flex gap-4">
+                      <div className="relative w-32 aspect-video rounded-xl overflow-hidden bg-black flex-shrink-0 border border-white/10">
+                        <Image
+                          src={`https://img.youtube.com/vi/${p.cover_image}/maxresdefault.jpg`}
+                          alt={p.video_title}
+                          fill
+                          className="object-cover"
+                        />
+                        {p.duration && (
+                          <span className="absolute bottom-1 right-1 bg-black/80 text-[9px] px-1 rounded text-white font-mono">
+                            {p.duration}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          {p.category.slice(0, 2).map((c) => (
+                            <span
+                              key={c}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 font-medium"
+                            >
+                              {c}
+                            </span>
+                          ))}
+                        </div>
+                        <h4 className="text-sm font-bold text-white truncate">{p.video_title}</h4>
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">
+                          {p.client_name || "Independent"} • {p.publish_date}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                      <Link
+                        href={`/project/${p.id}`}
+                        target="_blank"
+                        className="text-xs text-gray-400 hover:text-blue-400 flex items-center gap-1"
+                      >
+                        <ExternalLink size={12} />
+                        <span>Preview Page</span>
+                      </Link>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingProject(p);
+                            setIsProjectModalOpen(true);
+                          }}
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition-colors cursor-pointer"
+                          title="Edit Project"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProject(p.id, p.video_title)}
+                          className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 transition-colors cursor-pointer"
+                          title="Delete Project"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {filteredProjects.length === 0 && (
+                <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl text-gray-400">
+                  <Film className="mx-auto mb-2 opacity-40" size={32} />
+                  <p className="text-sm">No projects matching your search criteria.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 5. CATEGORIES MANAGER TAB */}
+          {/* ================================================================ */}
+          {activeSection === "categories" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">Project Categories</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Manage the categories used for filtering projects on the home page and in the portfolio grid.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-6">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryInput}
+                    onChange={(e) => setNewCategoryInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCategory())}
+                    placeholder="Enter new category name (e.g. 3D VFX)..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                  />
+                  <button
+                    onClick={handleAddCategory}
+                    className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={16} />
+                    <span>Add Category</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {content.categories.map((cat) => (
+                    <div
+                      key={cat}
+                      className="flex items-center justify-between p-3.5 rounded-xl bg-white/[0.02] border border-white/5"
+                    >
+                      <span className="text-sm font-medium text-white">{cat}</span>
+                      {cat !== "All" && (
+                        <button
+                          onClick={() => handleDeleteCategory(cat)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 6. SERVICES SECTION TAB ("What I Can Do") */}
+          {/* ================================================================ */}
+          {activeSection === "services" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Services Section</h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Manage the "What I Can Do For You" cards on the homepage.
+                  </p>
+                </div>
+                <button
+                  onClick={handleAddService}
+                  className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Add Service Card</span>
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                {content.servicesSection.services.map((s, idx) => (
+                  <div
+                    key={s.id || idx}
+                    className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3 relative group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={s.icon}
+                          onChange={(e) => {
+                            const updated = [...content.servicesSection.services];
+                            updated[idx] = { ...updated[idx], icon: e.target.value };
+                            updateContent("servicesSection", {
+                              ...content.servicesSection,
+                              services: updated,
+                            });
+                          }}
+                          className="w-12 text-center bg-white/10 border border-white/10 rounded-lg py-1 text-lg"
+                        />
+                        <input
+                          type="text"
+                          value={s.title}
+                          onChange={(e) => {
+                            const updated = [...content.servicesSection.services];
+                            updated[idx] = { ...updated[idx], title: e.target.value };
+                            updateContent("servicesSection", {
+                              ...content.servicesSection,
+                              services: updated,
+                            });
+                          }}
+                          placeholder="Service Title"
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white font-bold flex-1"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleDeleteService(s.id)}
+                        className="p-1 text-gray-400 hover:text-red-400"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    <textarea
+                      rows={2}
+                      value={s.description}
+                      onChange={(e) => {
+                        const updated = [...content.servicesSection.services];
+                        updated[idx] = { ...updated[idx], description: e.target.value };
+                        updateContent("servicesSection", {
+                          ...content.servicesSection,
+                          services: updated,
+                        });
+                      }}
+                      placeholder="Service Description..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-gray-300 resize-none focus:outline-none"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 7. ABOUT & BENTO GRID TAB */}
+          {/* ================================================================ */}
+          {activeSection === "about" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">About Page & Bento Grid</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Customize the profile bento card, experience statistics, philosophy quote & socials.
+                </p>
+              </div>
+
+              {/* Profile Card Settings */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Hero Profile Bento Card
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      First Name
+                    </label>
+                    <input
+                      type="text"
+                      value={content.about.profile.firstName}
+                      onChange={(e) =>
+                        updateContent("about", {
+                          ...content.about,
+                          profile: { ...content.about.profile, firstName: e.target.value },
+                        })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Last Name / Surname (Colored)
+                    </label>
+                    <input
+                      type="text"
+                      value={content.about.profile.lastName}
+                      onChange={(e) =>
+                        updateContent("about", {
+                          ...content.about,
+                          profile: { ...content.about.profile, lastName: e.target.value },
+                        })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Profile Sub-Tagline
+                  </label>
+                  <input
+                    type="text"
+                    value={content.about.profile.title}
+                    onChange={(e) =>
+                      updateContent("about", {
+                        ...content.about,
+                        profile: { ...content.about.profile, title: e.target.value },
+                      })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Profile Image Path / URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={content.about.profile.image}
+                      onChange={(e) =>
+                        updateContent("about", {
+                          ...content.about,
+                          profile: { ...content.about.profile, image: e.target.value },
+                        })
+                      }
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                    <label className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium cursor-pointer flex items-center gap-1.5">
+                      <Upload size={14} />
+                      <span>Upload</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) =>
+                          handleImageUpload(e, (url) =>
+                            updateContent("about", {
+                              ...content.about,
+                              profile: { ...content.about.profile, image: url },
+                            })
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats & Philosophy */}
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Stats */}
+                <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-gray-300">Experience Stat</h4>
+                  <input
+                    type="text"
+                    value={content.about.stats.number}
+                    onChange={(e) =>
+                      updateContent("about", {
+                        ...content.about,
+                        stats: { ...content.about.stats, number: e.target.value },
+                      })
+                    }
+                    placeholder="e.g. 5+"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white"
+                  />
+                  <input
+                    type="text"
+                    value={content.about.stats.label}
+                    onChange={(e) =>
+                      updateContent("about", {
+                        ...content.about,
+                        stats: { ...content.about.stats, label: e.target.value },
+                      })
+                    }
+                    placeholder="e.g. Years Active"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white"
+                  />
+                </div>
+
+                {/* Philosophy */}
+                <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3">
+                  <h4 className="text-xs font-bold uppercase text-gray-300">Philosophy Quote</h4>
+                  <textarea
+                    rows={3}
+                    value={content.about.philosophy.quote}
+                    onChange={(e) =>
+                      updateContent("about", {
+                        ...content.about,
+                        philosophy: { ...content.about.philosophy, quote: e.target.value },
+                      })
+                    }
+                    placeholder="Quote text..."
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-xs text-white resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 8. CLIENTS & MARQUEE TAB */}
+          {/* ================================================================ */}
+          {activeSection === "clients" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Clients & Trusted Logos</h2>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Manage the brands, companies, and logos in the animated marquee carousel.
+                  </p>
+                </div>
+                <button
+                  onClick={handleAddClient}
+                  className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Add Client</span>
+                </button>
+              </div>
+
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {content.clients.map((c, idx) => (
+                  <div
+                    key={c.id || idx}
+                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="relative w-12 h-12 rounded-xl bg-white/5 p-2 flex items-center justify-center overflow-hidden border border-white/10">
+                        <Image src={c.logo} alt={c.name} fill className="object-contain p-1" />
+                      </div>
+                      <button
+                        onClick={() => handleDeleteClient(c.id)}
+                        className="p-1 text-gray-400 hover:text-red-400"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+
+                    <input
+                      type="text"
+                      value={c.name}
+                      onChange={(e) => {
+                        const updated = [...content.clients];
+                        updated[idx] = { ...updated[idx], name: e.target.value };
+                        updateContent("clients", updated);
+                      }}
+                      placeholder="Client Name"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
+                    />
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={c.logo}
+                        onChange={(e) => {
+                          const updated = [...content.clients];
+                          updated[idx] = { ...updated[idx], logo: e.target.value };
+                          updateContent("clients", updated);
+                        }}
+                        placeholder="Logo URL or /companies/..."
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1 text-[11px] text-gray-300"
+                      />
+                      <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-gray-200 text-xs cursor-pointer flex items-center">
+                        <Upload size={12} />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) =>
+                            handleImageUpload(e, (url) => {
+                              const updated = [...content.clients];
+                              updated[idx] = { ...updated[idx], logo: url };
+                              updateContent("clients", updated);
+                            })
+                          }
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 9. SKILLS & WORKFLOW TAB */}
+          {/* ================================================================ */}
+          {activeSection === "skills" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">Skills & Workflow</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Manage software tools, specializations, achievements, and timeline workflow steps.
+                </p>
+              </div>
+
+              {/* Technical Skills */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Technical Software Tools
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {content.skills.technicalSkills.map((tool, idx) => (
+                    <div
+                      key={tool.name || idx}
+                      className="p-4 rounded-xl bg-white/[0.02] border border-white/5 space-y-2"
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          value={tool.name}
+                          onChange={(e) => {
+                            const updated = [...content.skills.technicalSkills];
+                            updated[idx] = { ...updated[idx], name: e.target.value };
+                            updateContent("skills", {
+                              ...content.skills,
+                              technicalSkills: updated,
+                            });
+                          }}
+                          className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-sm font-semibold text-white flex-1"
+                        />
+                        <input
+                          type="text"
+                          value={tool.color}
+                          onChange={(e) => {
+                            const updated = [...content.skills.technicalSkills];
+                            updated[idx] = { ...updated[idx], color: e.target.value };
+                            updateContent("skills", {
+                              ...content.skills,
+                              technicalSkills: updated,
+                            });
+                          }}
+                          placeholder="text-orange-400"
+                          className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-300 w-28"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={tool.description}
+                        onChange={(e) => {
+                          const updated = [...content.skills.technicalSkills];
+                          updated[idx] = { ...updated[idx], description: e.target.value };
+                          updateContent("skills", {
+                            ...content.skills,
+                            technicalSkills: updated,
+                          });
+                        }}
+                        placeholder="Tool description..."
+                        className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-gray-300"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Workflow Steps */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Workflow Timeline Steps
+                </h3>
+                <div className="space-y-3">
+                  {content.skills.workflow.map((step, idx) => (
+                    <div
+                      key={step.step}
+                      className="p-4 rounded-xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+                    >
+                      <span className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        {step.step}
+                      </span>
+                      <input
+                        type="text"
+                        value={step.title}
+                        onChange={(e) => {
+                          const updated = [...content.skills.workflow];
+                          updated[idx] = { ...updated[idx], title: e.target.value };
+                          updateContent("skills", { ...content.skills, workflow: updated });
+                        }}
+                        className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-sm text-white font-semibold flex-1"
+                      />
+                      <input
+                        type="text"
+                        value={step.description}
+                        onChange={(e) => {
+                          const updated = [...content.skills.workflow];
+                          updated[idx] = { ...updated[idx], description: e.target.value };
+                          updateContent("skills", { ...content.skills, workflow: updated });
+                        }}
+                        className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-gray-300 flex-2 w-full sm:w-auto"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 10. CONTACT & INFO TAB */}
+          {/* ================================================================ */}
+          {activeSection === "contact" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">Contact & Communication Details</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Manage your direct email, WhatsApp number & link, location, and selling points.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Contact Email
+                    </label>
+                    <input
+                      type="email"
+                      value={content.contact.email}
+                      onChange={(e) =>
+                        updateContent("contact", { ...content.contact, email: e.target.value })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      WhatsApp Display Number
+                    </label>
+                    <input
+                      type="text"
+                      value={content.contact.whatsappNumber}
+                      onChange={(e) =>
+                        updateContent("contact", {
+                          ...content.contact,
+                          whatsappNumber: e.target.value,
+                        })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      WhatsApp Direct URL (wa.me/...)
+                    </label>
+                    <input
+                      type="text"
+                      value={content.contact.whatsappLink}
+                      onChange={(e) =>
+                        updateContent("contact", {
+                          ...content.contact,
+                          whatsappLink: e.target.value,
+                        })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                      Availability Status
+                    </label>
+                    <input
+                      type="text"
+                      value={content.contact.availability}
+                      onChange={(e) =>
+                        updateContent("contact", {
+                          ...content.contact,
+                          availability: e.target.value,
+                        })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1.5">
+                    Location Description
+                  </label>
+                  <input
+                    type="text"
+                    value={content.contact.location}
+                    onChange={(e) =>
+                      updateContent("contact", { ...content.contact, location: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 11. SEO & SETTINGS TAB */}
+          {/* ================================================================ */}
+          {activeSection === "settings" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-white/10 pb-4">
+                <h2 className="text-xl font-bold text-white">SEO & Global Settings</h2>
+                <p className="text-xs text-gray-400 mt-1">
+                  Configure search engine metadata, OpenGraph images, footer bio & global CTA defaults.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">SEO Metadata</h3>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Default Page Title
+                  </label>
+                  <input
+                    type="text"
+                    value={content.general.siteTitle}
+                    onChange={(e) =>
+                      updateContent("general", { ...content.general, siteTitle: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Meta Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={content.general.siteDescription}
+                    onChange={(e) =>
+                      updateContent("general", {
+                        ...content.general,
+                        siteDescription: e.target.value,
+                      })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Canonical Website URL
+                  </label>
+                  <input
+                    type="text"
+                    value={content.general.siteUrl}
+                    onChange={(e) =>
+                      updateContent("general", { ...content.general, siteUrl: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Footer Settings */}
+              <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  Footer & Attribution
+                </h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Footer Brand Name
+                    </label>
+                    <input
+                      type="text"
+                      value={content.footer.brandName}
+                      onChange={(e) =>
+                        updateContent("footer", { ...content.footer, brandName: e.target.value })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">
+                      Copyright Name
+                    </label>
+                    <input
+                      type="text"
+                      value={content.footer.copyrightName}
+                      onChange={(e) =>
+                        updateContent("footer", { ...content.footer, copyrightName: e.target.value })
+                      }
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
+                    Footer Bio
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={content.footer.brandBio}
+                    onChange={(e) =>
+                      updateContent("footer", { ...content.footer, brandBio: e.target.value })
+                    }
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Project Create/Edit Modal */}
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => {
+          setIsProjectModalOpen(false);
+          setEditingProject(null);
+        }}
+        project={editingProject}
+        onSave={handleSaveProject}
+        availableCategories={content.categories}
+      />
+    </div>
+  );
+}

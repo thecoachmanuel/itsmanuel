@@ -1,23 +1,26 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { allVideoProjects } from "@/db/projects";
+import { getAllProjects, getProjectById } from "@/lib/content-store";
 import ProjectDetails from "@/components/project-details";
 
-// Generate unique static params for all projects
+export const dynamic = "force-dynamic";
+
+// Generate static params for initial build
 export async function generateStaticParams() {
-  return allVideoProjects.map((project) => ({
+  const projects = await getAllProjects();
+  return projects.map((project) => ({
     id: project.id,
   }));
 }
 
-// Generate metadata for each project
+// Generate metadata dynamically for each project
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
-  const project = allVideoProjects.find((p) => p.id === id);
+  const project = await getProjectById(id);
 
   if (!project) {
     return {
@@ -49,7 +52,7 @@ export default async function ProjectPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = allVideoProjects.find((p) => p.id === id);
+  const project = await getProjectById(id);
 
   if (!project) {
     notFound();

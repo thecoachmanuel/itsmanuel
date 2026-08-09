@@ -3,20 +3,37 @@
 import { m } from "framer-motion";
 import { ArrowDown } from "lucide-react";
 import MagneticButton from "./magnetic-button";
-
 import { useLenis } from "lenis/react";
+import { HeroContent } from "@/types/content";
 
-export default function Hero() {
+interface HeroProps {
+  content?: HeroContent;
+}
+
+export default function Hero({ content }: HeroProps) {
     const lenis = useLenis();
 
+    const badgeText = content?.badgeText || "Available for Hire";
+    const titleLine1 = content?.titleLine1 || "CINEMATIC";
+    const titleLine2 = content?.titleLine2 || "EDITOR";
+    const subtitle = content?.subtitle || "Turning raw footage into visual stories — with style, precision, and a touch of";
+    const subtitleHighlight = content?.subtitleHighlight || "cinematic magic";
+    const primaryCtaText = content?.primaryCtaText || "View Work";
+    const primaryCtaLink = content?.primaryCtaLink || "#projects";
+    const secondaryCtaText = content?.secondaryCtaText || "Contact Me";
+    const secondaryCtaLink = content?.secondaryCtaLink || "/contact";
+    const scrollText = content?.scrollText || "Scroll";
+
     const scrollToProjects = (e?: React.MouseEvent) => {
-        e?.preventDefault();
-        if (lenis) {
-            lenis.scrollTo("#projects", {
-                duration: 2,
-                offset: -100, // Account for fixed navbar
-                easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Exponential ease-out for premium feel
-            });
+        if (primaryCtaLink.startsWith("#")) {
+            e?.preventDefault();
+            if (lenis) {
+                lenis.scrollTo(primaryCtaLink, {
+                    duration: 2,
+                    offset: -100, // Account for fixed navbar
+                    easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // Exponential ease-out for premium feel
+                });
+            }
         }
     };
 
@@ -39,7 +56,7 @@ export default function Hero() {
                 >
                     <div className="inline-flex items-center px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl text-xs sm:text-sm font-medium text-blue-300 tracking-[0.2em] shadow-[0_0_30px_rgba(59,130,246,0.15)] uppercase">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mr-2 animate-pulse" />
-                        Available for Hire
+                        {badgeText}
                     </div>
                 </m.div>
 
@@ -51,7 +68,7 @@ export default function Hero() {
                         transition={{ duration: 1, ease: [0.25, 1, 0.5, 1], delay: 0.1 }}
                         className="block w-full bg-gradient-to-b from-white via-white/90 to-white/40 bg-clip-text text-transparent drop-shadow-sm pb-2"
                     >
-                        CINEMATIC
+                        {titleLine1}
                     </m.span>
                     <m.span
                         initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
@@ -59,7 +76,7 @@ export default function Hero() {
                         transition={{ duration: 1, ease: [0.25, 1, 0.5, 1], delay: 0.3 }}
                         className="block w-full text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 pb-4 filter drop-shadow-[0_0_30px_rgba(59,130,246,0.25)]"
                     >
-                        EDITOR
+                        {titleLine2}
                     </m.span>
                 </h1>
 
@@ -70,7 +87,7 @@ export default function Hero() {
                     transition={{ duration: 0.8, delay: 0.6, ease: [0.25, 1, 0.5, 1] }}
                     className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto font-light leading-relaxed mb-12 sm:mb-16 md:px-0"
                 >
-                    Turning raw footage into visual stories — with style, precision, and a touch of <span className="text-white font-medium drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">cinematic magic</span>.
+                    {subtitle} <span className="text-white font-medium drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">{subtitleHighlight}</span>.
                 </m.p>
 
                 {/* Buttons */}
@@ -82,22 +99,22 @@ export default function Hero() {
                 >
                     <MagneticButton>
                         <a
-                            href="#projects"
+                            href={primaryCtaLink}
                             onClick={scrollToProjects}
                             className="group relative inline-flex items-center justify-center w-full sm:w-auto px-8 sm:px-10 py-4 text-base sm:text-lg font-semibold text-black bg-white rounded-full overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-[0_0_40px_rgba(255,255,255,0.4)] cursor-pointer"
                         >
                             <span className="relative z-10 flex items-center">
-                                View Work
+                                {primaryCtaText}
                             </span>
                         </a>
                     </MagneticButton>
 
                     <MagneticButton>
                         <a
-                            href="/contact"
+                            href={secondaryCtaLink}
                             className="group inline-flex items-center justify-center w-full sm:w-auto px-8 sm:px-10 py-4 text-base sm:text-lg font-medium text-white bg-white/5 border border-white/10 rounded-full backdrop-blur-2xl transition-all duration-500 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]"
                         >
-                            Contact Me
+                            {secondaryCtaText}
                         </a>
                     </MagneticButton>
                 </m.div>
@@ -112,9 +129,9 @@ export default function Hero() {
             >
                 <button
                     onClick={scrollToProjects}
-                    className="flex flex-col items-center gap-3 text-white/40 hover:text-white transition-colors duration-500"
+                    className="flex flex-col items-center gap-3 text-white/40 hover:text-white transition-colors duration-500 cursor-pointer"
                 >
-                    <span className="text-[9px] sm:text-[10px] tracking-[0.3em] uppercase font-medium">Scroll</span>
+                    <span className="text-[9px] sm:text-[10px] tracking-[0.3em] uppercase font-medium">{scrollText}</span>
                     <ArrowDown className="animate-bounce" size={18} strokeWidth={1.5} />
                 </button>
             </m.div>

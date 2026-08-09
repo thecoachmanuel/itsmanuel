@@ -3,26 +3,27 @@ import { allVideoProjects } from "@/db/projects";
 import { Client, VideoProject } from "@/types/videos";
 
 // Helper function to get all projects sorted by date (latest first)
-export const getAllVideoProjects = (): VideoProject[] => {
-  return [...allVideoProjects].sort(
+export const getAllVideoProjects = (projects: VideoProject[] = allVideoProjects): VideoProject[] => {
+  return [...projects].sort(
     (a, b) =>
       new Date(b.publish_date).getTime() - new Date(a.publish_date).getTime()
   );
 };
 
-export const getAllVideoProjectsFlattened = (): VideoProject[] => {
-  return getAllVideoProjects();
+export const getAllVideoProjectsFlattened = (projects: VideoProject[] = allVideoProjects): VideoProject[] => {
+  return getAllVideoProjects(projects);
 };
 
 // Helper function to get projects by category sorted by date (latest first)
 export const getVideoProjectsByCategory = (
-  category: string
+  category: string,
+  projects: VideoProject[] = allVideoProjects
 ): VideoProject[] => {
   if (category === "All") {
-    return getAllVideoProjects();
+    return getAllVideoProjects(projects);
   }
 
-  const filteredProjects = allVideoProjects.filter((project) =>
+  const filteredProjects = projects.filter((project) =>
     project.category.includes(category)
   );
 
@@ -33,15 +34,18 @@ export const getVideoProjectsByCategory = (
 };
 
 // Helper function to get project by ID
-export const getVideoProjectById = (id: string): VideoProject | undefined => {
-  return allVideoProjects.find((project) => project.id === id);
+export const getVideoProjectById = (
+  id: string,
+  projects: VideoProject[] = allVideoProjects
+): VideoProject | undefined => {
+  return projects.find((project) => project.id === id);
 };
 
 // Helper function to get all unique categories
-export const getVideoCategories = (): string[] => {
+export const getVideoCategories = (projects: VideoProject[] = allVideoProjects): string[] => {
   const categoriesSet = new Set<string>();
 
-  allVideoProjects.forEach((project) => {
+  projects.forEach((project) => {
     project.category.forEach((cat) => categoriesSet.add(cat));
   });
 
@@ -49,13 +53,15 @@ export const getVideoCategories = (): string[] => {
 };
 
 // Returns categories with project count, sorted descending
-export const getVideoCategoriesWithCount = (): {
+export const getVideoCategoriesWithCount = (
+  projects: VideoProject[] = allVideoProjects
+): {
   category: string;
   count: number;
 }[] => {
   const categoryCountMap = new Map<string, number>();
 
-  allVideoProjects.forEach((project) => {
+  projects.forEach((project) => {
     project.category.forEach((cat) => {
       categoryCountMap.set(cat, (categoryCountMap.get(cat) || 0) + 1);
     });
@@ -68,22 +74,27 @@ export const getVideoCategoriesWithCount = (): {
   return sortedCategories;
 };
 
-export const getVideoCategoriesWithCountIncludingAll = (): {
+export const getVideoCategoriesWithCountIncludingAll = (
+  projects: VideoProject[] = allVideoProjects
+): {
   category: string;
   count: number;
 }[] => {
-  const categoryCounts = getVideoCategoriesWithCount();
-  const total = allVideoProjects.length;
+  const categoryCounts = getVideoCategoriesWithCount(projects);
+  const total = projects.length;
 
   return [{ category: "All", count: total }, ...categoryCounts];
 };
 
-export function getFeaturedProjects(limit = 6): VideoProject[] {
-  return getAllVideoProjects().slice(0, limit);
+export function getFeaturedProjects(
+  limit = 6,
+  projects: VideoProject[] = allVideoProjects
+): VideoProject[] {
+  return getAllVideoProjects(projects).slice(0, limit);
 }
 
-export function getClients(): Client[] {
-  return clientsData;
+export function getClients(clients: Client[] = clientsData): Client[] {
+  return clients;
 }
 
 // Helper function to get the proper embed link
@@ -101,21 +112,4 @@ export const getYouTubeEmbedUrl = (url: string): string | null => {
     /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|.+\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
   );
   return match ? `https://www.youtube.com/embed/${match[1]}` : null;
-};
-
-// Legacy support - keep the old structure for backward compatibility if needed
-export const videoProjectsData = {
-  "Talking Head": allVideoProjects.filter((p) =>
-    p.category.includes("Talking Head")
-  ),
-  Shorts: allVideoProjects.filter((p) => p.category.includes("Shorts")),
-  Promo: allVideoProjects.filter((p) => p.category.includes("Promo")),
-  Documentary: allVideoProjects.filter((p) =>
-    p.category.includes("Documentary")
-  ),
-  Explainer: allVideoProjects.filter((p) => p.category.includes("Explainer")),
-  "Motion Graphics": allVideoProjects.filter((p) =>
-    p.category.includes("Motion Graphics")
-  ),
-  Animation: allVideoProjects.filter((p) => p.category.includes("Animation")),
 };

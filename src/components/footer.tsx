@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   Linkedin,
   Twitter,
@@ -8,38 +9,80 @@ import {
   Mail,
   Heart,
   Instagram,
+  Facebook,
+  Github,
 } from "lucide-react";
+import { FooterContent } from "@/types/content";
 
-export default function Footer() {
+interface FooterProps {
+  content?: FooterContent;
+}
+
+export default function Footer({ content }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
 
-  const socialLinks = [
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
+  const brandName = content?.brandName || "Emmanuel Olaitan";
+  const brandBio =
+    content?.brandBio ||
+    "Video Editor and Motion Graphics Designer passionate about creating visual stories with style, precision, and cinematic magic.";
+  const quickLinksTitle = content?.quickLinksTitle || "Quick Links";
+  const connectTitle = content?.connectTitle || "Connect With Me";
+  const copyrightName = content?.copyrightName || "Coach Manuel";
+  const copyrightUrl = content?.copyrightUrl || "https://instagram.com/thecoachmanuel";
+
+  const defaultSocialLinks = [
     {
       name: "YouTube",
       href: "https://www.youtube.com/@iamcoachmanuel",
-      icon: Youtube,
+      icon: "Youtube",
     },
     {
       name: "Instagram",
       href: "https://instagram.com/editbymanuel",
-      icon: Instagram,
+      icon: "Instagram",
     },
     {
       name: "LinkedIn",
-      href: "#",
-      icon: Linkedin,
+      href: "https://linkedin.com/in/emmanuel-olaitan",
+      icon: "Linkedin",
     },
     {
       name: "Twitter",
-      href: "#",
-      icon: Twitter,
+      href: "https://twitter.com",
+      icon: "Twitter",
     },
     {
       name: "Email",
       href: "mailto:olaitanadewale@gmail.com",
-      icon: Mail,
+      icon: "Mail",
     },
   ];
+
+  const socialLinks = content?.socialLinks || defaultSocialLinks;
+
+  const getIcon = (iconName: string) => {
+    switch (iconName.toLowerCase()) {
+      case "youtube":
+        return Youtube;
+      case "instagram":
+        return Instagram;
+      case "linkedin":
+        return Linkedin;
+      case "twitter":
+        return Twitter;
+      case "facebook":
+        return Facebook;
+      case "github":
+        return Github;
+      default:
+        return Mail;
+    }
+  };
 
   return (
     <footer className="glass-panel border-t border-white/5 mt-20 backdrop-blur-3xl">
@@ -48,19 +91,17 @@ export default function Footer() {
           {/* Brand */}
           <div className="space-y-6">
             <h3 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-              Emmanuel Olaitan
+              {brandName}
             </h3>
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-              Video Editor and Motion Graphics Designer passionate about
-              creating visual stories with style, precision, and cinematic
-              magic.
+              {brandBio}
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-6">
             <h4 className="font-semibold text-white tracking-wide uppercase text-xs opacity-70">
-              Quick Links
+              {quickLinksTitle}
             </h4>
             <div className="grid grid-cols-2 gap-4 text-sm font-medium">
               <Link
@@ -93,11 +134,11 @@ export default function Footer() {
           {/* Social Links */}
           <div className="space-y-6">
             <h4 className="font-semibold text-white tracking-wide uppercase text-xs opacity-70">
-              Connect With Me
+              {connectTitle}
             </h4>
             <div className="flex space-x-5">
               {socialLinks.map((link) => {
-                const Icon = link.icon;
+                const IconComponent = getIcon(link.icon);
                 return (
                   <a
                     key={link.name}
@@ -108,7 +149,7 @@ export default function Footer() {
                     aria-label={link.name}
                   >
                     <div className="p-3 rounded-full bg-white/5 border border-white/10 group-hover:bg-blue-600/20 group-hover:border-blue-500/50 transition-all duration-300">
-                      <Icon size={20} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
+                      <IconComponent size={20} className="text-gray-400 group-hover:text-blue-400 transition-colors" />
                     </div>
                   </a>
                 );
@@ -121,12 +162,12 @@ export default function Footer() {
           <p className="text-gray-500 text-sm flex items-center justify-center gap-1.5">
             Made with <Heart className="text-red-500 fill-red-500/20" size={14} /> by{" "}
             <a
-              href="https://instagram.com/thecoachmanuel"
+              href={copyrightUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-white transition-colors underline decoration-dotted underline-offset-4"
             >
-              Coach Manuel
+              {copyrightName}
             </a>{" "}
             © {currentYear}
           </p>
