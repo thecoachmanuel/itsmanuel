@@ -16,7 +16,7 @@ export default function Footer() {
   const socialLinks = [
     {
       name: "YouTube",
-      href: "https://www.youtube.com/@thecoachmanuel",
+      href: "https://www.youtube.com/@iamcoachmanuel",
       icon: Youtube,
     },
     {
