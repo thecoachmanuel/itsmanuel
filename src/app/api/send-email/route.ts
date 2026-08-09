@@ -1,7 +1,62 @@
 import { EmailTemplate } from "@/components/email-template";
 import { render } from "@react-email/render";
+import dns from "dns";
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+} catch {}
+
+async function resolveHostIp(hostname: string): Promise<string> {
+  // If already an IP, return directly
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+    return hostname;
+  }
+
+  // 1. Try Cloudflare DNS over HTTPS (port 443, never blocked)
+  try {
+    const res = await fetch(
+      `https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}`,
+      {
+        headers: { accept: "application/dns-json" },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const ip = data.Answer?.find(
+        (a: { type: number; data: string }) => a.type === 1
+      )?.data;
+      if (ip) return ip;
+    }
+  } catch {}
+
+  // 2. Try Google DNS over HTTPS
+  try {
+    const res = await fetch(
+      `https://8.8.8.8/resolve?name=${encodeURIComponent(hostname)}`,
+      {
+        headers: { accept: "application/json" },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const ip = data.Answer?.find(
+        (a: { type: number; data: string }) => a.type === 1
+      )?.data;
+      if (ip) return ip;
+    }
+  } catch {}
+
+  // 3. Hardcoded reliable fallback for Gmail SMTP
+  if (hostname.includes("gmail")) {
+    return "142.250.102.108";
+  }
+
+  return hostname;
+}
 
 export async function POST(req: NextRequest) {
   let body;
@@ -75,7 +130,7 @@ export async function POST(req: NextRequest) {
 
   const smtpUser = process.env.SMTP_USER?.trim();
   const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, "");
-  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpHost = process.env.SMTP_HOST?.trim() || "smtp.gmail.com";
   const smtpPort = Number(process.env.SMTP_PORT) || 465;
   const smtpSecure = process.env.SMTP_SECURE
     ? process.env.SMTP_SECURE === "true"
@@ -83,6 +138,7 @@ export async function POST(req: NextRequest) {
   const toEmail = process.env.CONTACT_RECEIVER_EMAIL?.trim() || smtpUser;
 
   if (!smtpUser || !smtpPass) {
+    console.error("❌ SMTP is not configured. Missing SMTP_USER or SMTP_PASS.");
     return NextResponse.json(
       {
         error:
@@ -93,13 +149,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const isGmail = smtpHost.toLowerCase().includes("gmail");
+    const targetHost = await resolveHostIp(smtpHost);
+
     const transporter = nodemailer.createTransport({
-      host: smtpHost,
+      host: targetHost,
       port: smtpPort,
       secure: smtpSecure,
       auth: {
         user: smtpUser,
         pass: smtpPass,
+      },
+      tls: {
+        servername: isGmail ? "smtp.gmail.com" : smtpHost,
+        rejectUnauthorized: false,
       },
     });
 
@@ -112,7 +175,7 @@ export async function POST(req: NextRequest) {
     );
 
     const info = await transporter.sendMail({
-      from: `"Portfolio Contact" <${smtpUser}>`,
+      from: `"Portfolio Contact - ${name}" <${smtpUser}>`,
       to: toEmail,
       replyTo: `${name} <${email}>`,
       subject: `New Message from Portfolio - ${projectType || "General Inquiry"}`,
@@ -120,10 +183,12 @@ export async function POST(req: NextRequest) {
       html: emailHtml,
     });
 
+    console.log("✅ Email sent successfully. Message ID:", info.messageId);
     return NextResponse.json({ success: true, messageId: info.messageId });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to send email via SMTP";
+    console.error("❌ SMTP Send Error:", errorMessage);
     return NextResponse.json(
       { error: errorMessage },
       { status: 500 }
