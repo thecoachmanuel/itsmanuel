@@ -140,7 +140,7 @@ export const achievements = [
     color: "text-green-400",
   },
   {
-    title: "3+ Years Experience",
+    title: "5+ Years Experience",
     description:
       "Professional video editing experience with continuous skill development",
     icon: Camera,
