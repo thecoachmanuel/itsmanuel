@@ -11,12 +11,9 @@ import {
   Download,
   Upload,
   Sparkles,
-  CheckCircle2,
-  AlertTriangle,
   ExternalLink,
   Film,
   Building2,
-  Award,
   Layers,
   Search,
   Database,
@@ -26,6 +23,9 @@ import {
   Send,
   MessageSquare,
   Check,
+  ShieldCheck,
+  KeyRound,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminSidebar from "@/components/admin/admin-sidebar";
@@ -63,19 +63,28 @@ export default function AdminDashboardPage() {
   // New Category input
   const [newCategoryInput, setNewCategoryInput] = useState("");
 
-  // Fetch Full Site Content, DB status, and Contact Messages
+  // Admin Credentials State
+  const [currentAdminUsername, setCurrentAdminUsername] = useState("admin");
+  const [newUsernameInput, setNewUsernameInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [isUpdatingCreds, setIsUpdatingCreds] = useState(false);
+
+  // Fetch Full Site Content, DB status, Contact Messages, and Admin Credentials
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [contentRes, dbRes, messagesRes] = await Promise.all([
+      const [contentRes, dbRes, messagesRes, credsRes] = await Promise.all([
         fetch("/api/admin/content"),
         fetch("/api/admin/db-status"),
         fetch("/api/admin/messages"),
+        fetch("/api/admin/credentials"),
       ]);
 
       const contentData = await contentRes.json();
       const dbData = await dbRes.json();
       const messagesData = await messagesRes.json();
+      const credsData = await credsRes.json();
 
       if (contentRes.ok && contentData.content) {
         setContent(contentData.content);
@@ -90,6 +99,11 @@ export default function AdminDashboardPage() {
       if (messagesRes.ok && messagesData.messages) {
         setMessages(messagesData.messages);
         setUnreadCount(messagesData.unreadCount || 0);
+      }
+
+      if (credsRes.ok && credsData.username) {
+        setCurrentAdminUsername(credsData.username);
+        setNewUsernameInput(credsData.username);
       }
     } catch {
       toast.error("Failed to connect to backend server");
@@ -174,7 +188,43 @@ export default function AdminDashboardPage() {
     reader.readAsText(file);
   };
 
-  // Image Upload Helper for generic section fields
+  // Update Admin Credentials
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPasswordInput) {
+      toast.error("Please enter your current password to save changes");
+      return;
+    }
+
+    setIsUpdatingCreds(true);
+    try {
+      const res = await fetch("/api/admin/credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          newUsername: newUsernameInput,
+          newPassword: newPasswordInput || undefined,
+          currentPassword: currentPasswordInput,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Admin credentials updated in .env.local successfully!");
+        setCurrentAdminUsername(data.username);
+        setCurrentPasswordInput("");
+        setNewPasswordInput("");
+      } else {
+        toast.error(data.error || "Failed to update credentials");
+      }
+    } catch {
+      toast.error("Network error while updating credentials");
+    } finally {
+      setIsUpdatingCreds(false);
+    }
+  };
+
+  // Image Upload Helper
   const handleImageUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     onSuccess: (url: string) => void
@@ -345,7 +395,7 @@ export default function AdminDashboardPage() {
             <Loader2 className="w-7 h-7 animate-spin" />
           </div>
           <p className="text-white font-medium text-lg">Connecting to MongoDB & Loading CMS...</p>
-          <p className="text-xs text-gray-400">Synchronizing database models & messages</p>
+          <p className="text-xs text-gray-400">Synchronizing database models & live credentials</p>
         </div>
       </div>
     );
@@ -406,7 +456,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={loadData}
-              title="Refresh from MongoDB"
+              title="Refresh from MongoDB & ENV"
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-all cursor-pointer"
             >
               <RefreshCw size={16} />
@@ -609,7 +659,7 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 gap-1">
                   <button
                     onClick={() => setMessageFilter("all")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       messageFilter === "all"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-gray-400 hover:text-white"
@@ -619,7 +669,7 @@ export default function AdminDashboardPage() {
                   </button>
                   <button
                     onClick={() => setMessageFilter("unread")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       messageFilter === "unread"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-gray-400 hover:text-white"
@@ -629,7 +679,7 @@ export default function AdminDashboardPage() {
                   </button>
                   <button
                     onClick={() => setMessageFilter("read")}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       messageFilter === "read"
                         ? "bg-blue-600 text-white shadow-sm"
                         : "text-gray-400 hover:text-white"
@@ -1281,7 +1331,6 @@ export default function AdminDashboardPage() {
 
               {/* Stats & Philosophy */}
               <div className="grid sm:grid-cols-2 gap-4">
-                {/* Stats */}
                 <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3">
                   <h4 className="text-xs font-bold uppercase text-gray-300">Experience Stat</h4>
                   <input
@@ -1310,7 +1359,6 @@ export default function AdminDashboardPage() {
                   />
                 </div>
 
-                {/* Philosophy */}
                 <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/10 space-y-3">
                   <h4 className="text-xs font-bold uppercase text-gray-300">Philosophy Quote</h4>
                   <textarea
@@ -1632,12 +1680,98 @@ export default function AdminDashboardPage() {
           {activeSection === "settings" && (
             <div className="space-y-6 animate-in fade-in duration-300">
               <div className="border-b border-white/10 pb-4">
-                <h2 className="text-xl font-bold text-white">SEO & Global Settings</h2>
+                <h2 className="text-xl font-bold text-white">SEO, Security & Global Settings</h2>
                 <p className="text-xs text-gray-400 mt-1">
-                  Configure search engine metadata, OpenGraph images, footer bio & global CTA defaults.
+                  Manage search engine metadata, admin login credentials (ENV), and footer details.
                 </p>
               </div>
 
+              {/* Admin Security & Credentials Manager */}
+              <div className="p-6 rounded-3xl bg-gradient-to-tr from-blue-950/30 to-indigo-950/20 border border-blue-500/20 shadow-xl space-y-4">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={20} className="text-blue-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Admin Security & Login Credentials (ENV)
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-300">
+                  Current active username is fetched dynamically from your <code className="text-blue-300 bg-blue-900/40 px-1.5 py-0.5 rounded font-mono">.env.local</code> file: <strong className="text-white">{currentAdminUsername}</strong>.
+                  You can change your credentials here or directly edit <code className="text-blue-300 bg-blue-900/40 px-1.5 py-0.5 rounded font-mono">.env.local</code>.
+                </p>
+
+                <form onSubmit={handleUpdateCredentials} className="space-y-4 pt-2">
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        Admin Username
+                      </label>
+                      <div className="relative">
+                        <KeyRound size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={newUsernameInput}
+                          onChange={(e) => setNewUsernameInput(e.target.value)}
+                          placeholder="Admin Username"
+                          required
+                          className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">
+                        New Password (leave blank to keep unchanged)
+                      </label>
+                      <div className="relative">
+                        <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="password"
+                          value={newPasswordInput}
+                          onChange={(e) => setNewPasswordInput(e.target.value)}
+                          placeholder="New password (min 6 characters)"
+                          className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex-1 max-w-sm">
+                      <label className="block text-xs font-semibold text-amber-300 mb-1">
+                        Current Password (Required to confirm changes) *
+                      </label>
+                      <input
+                        type="password"
+                        value={currentPasswordInput}
+                        onChange={(e) => setCurrentPasswordInput(e.target.value)}
+                        placeholder="Enter current password"
+                        required
+                        className="w-full bg-white/5 border border-amber-500/30 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isUpdatingCreds}
+                      className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 sm:self-end h-10"
+                    >
+                      {isUpdatingCreds ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck size={14} />
+                          <span>Update Credentials in ENV</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* SEO Metadata */}
               <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">SEO Metadata</h3>
                 <div>
