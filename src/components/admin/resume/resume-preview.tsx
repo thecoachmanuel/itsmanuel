@@ -1,7 +1,20 @@
 "use client";
 
 import React, { useRef } from "react";
-import { Download, Printer, ExternalLink, Globe, Mail, Phone, MapPin, Linkedin, Youtube, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import {
+  Download,
+  Printer,
+  ExternalLink,
+  Globe,
+  Mail,
+  Phone,
+  MapPin,
+  Instagram,
+  Youtube,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+} from "lucide-react";
 import { ResumeData } from "@/types/resume";
 
 interface ResumePreviewProps {
@@ -44,7 +57,7 @@ export default function ResumePreview({
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-300">ATS Sheet Preview</span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-            {settings.template.toUpperCase()}
+            {settings.template.toUpperCase()} (Times New Roman / 12pt / 1.5 Spacing in PDF)
           </span>
         </div>
 
@@ -98,21 +111,21 @@ export default function ResumePreview({
           ref={printRef}
           id="ats-resume-sheet"
           style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}
-          className={`ats-resume-document w-full max-w-[850px] min-h-[1100px] bg-white text-[#111827] p-8 sm:p-12 rounded-xl shadow-2xl transition-transform duration-200 border border-gray-200 selection:bg-blue-200 selection:text-blue-900 ${fontSizeClass}`}
+          className={`ats-resume-document w-full max-w-[850px] min-h-[1100px] bg-white text-[#111827] p-8 sm:p-12 rounded-xl shadow-2xl transition-transform duration-200 border border-gray-200 selection:bg-blue-200 selection:text-blue-900 font-serif ${fontSizeClass}`}
         >
           {/* ========================================================================= */}
           {/* HEADER (NAME & ATS-PARSEABLE CONTACT INFO) */}
           {/* ========================================================================= */}
-          <header className="border-b-2 border-gray-800 pb-4 mb-4 text-center">
+          <header className="border-b-2 border-gray-800 pb-3 mb-4 text-center">
             <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-gray-900 mb-1 font-serif">
               {personalInfo.fullName || "Emmanuel Olaitan"}
             </h1>
-            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2.5">
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">
               {personalInfo.professionalTitle || "Senior Video Editor & Post-Production Specialist"}
             </p>
 
             {/* Standard Single-Line Contact Strip */}
-            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-gray-600 font-medium">
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-gray-600 font-medium">
               {personalInfo.email && (
                 <a href={`mailto:${personalInfo.email}`} className="hover:text-blue-700 underline-offset-2">
                   {personalInfo.email}
@@ -133,15 +146,15 @@ export default function ResumePreview({
                   {personalInfo.websiteUrl.replace(/^https?:\/\//, "")}
                 </a>
               )}
-              {personalInfo.linkedinUrl && <span>•</span>}
-              {personalInfo.linkedinUrl && (
+              {personalInfo.instagramUrl && <span>•</span>}
+              {personalInfo.instagramUrl && (
                 <a
-                  href={personalInfo.linkedinUrl}
+                  href={personalInfo.instagramUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="hover:text-blue-700 underline-offset-2"
                 >
-                  LinkedIn
+                  Instagram
                 </a>
               )}
               {personalInfo.youtubeOrGithubUrl && <span>•</span>}
@@ -187,7 +200,7 @@ export default function ResumePreview({
                       <span className="font-bold text-gray-900 min-w-[190px] flex-shrink-0">
                         {cat.category}:
                       </span>
-                      <span className="text-gray-800 leading-normal">
+                      <span className="text-gray-800 leading-relaxed">
                         {cat.skills.join(" • ")}
                       </span>
                     </div>
@@ -238,7 +251,7 @@ export default function ResumePreview({
             )}
 
             {/* ========================================================================= */}
-            {/* KEY PROJECTS */}
+            {/* KEY PROJECTS & CLIENT DELIVERABLES */}
             {/* ========================================================================= */}
             {settings.showProjects && projects && projects.length > 0 && (
               <section className="ats-section">
@@ -276,7 +289,7 @@ export default function ResumePreview({
                       </div>
 
                       {proj.description && (
-                        <p className="text-xs text-gray-700 mb-1 leading-normal">
+                        <p className="text-xs text-gray-700 mb-1 leading-relaxed">
                           {proj.description}
                         </p>
                       )}
@@ -359,7 +372,7 @@ export default function ResumePreview({
                           {item.date && <span className="text-gray-600 text-[11px]">{item.date}</span>}
                         </div>
                         {item.description && (
-                          <p className="text-gray-700 leading-normal">{item.description}</p>
+                          <p className="text-gray-700 leading-relaxed">{item.description}</p>
                         )}
                       </div>
                     ))}
@@ -370,22 +383,25 @@ export default function ResumePreview({
         </div>
       </div>
 
-      {/* Global CSS for Print Mode */}
+      {/* Global CSS for Print Mode (Standard ATS: Times New Roman, 12pt, 1.5 line spacing, standard 0.75in margins) */}
       <style jsx global>{`
         @media print {
-          /* Hide all UI, headers, sidebars, buttons */
+          /* Hide all UI elements, navigation bars, controls */
           body * {
             visibility: hidden;
           }
+
           /* Show ONLY the ATS resume document */
           #ats-resume-sheet,
           #ats-resume-sheet * {
             visibility: visible;
+            box-sizing: border-box !important;
           }
+
           #ats-resume-sheet {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 !important;
@@ -395,17 +411,110 @@ export default function ResumePreview({
             transform: none !important;
             background: #ffffff !important;
             color: #000000 !important;
+            font-family: "Times New Roman", Times, Georgia, serif !important;
+            font-size: 12pt !important;
+            line-height: 1.5 !important;
           }
+
+          #ats-resume-sheet * {
+            font-family: "Times New Roman", Times, Georgia, serif !important;
+            color: #000000 !important;
+          }
+
+          /* Header Styling in Print */
+          #ats-resume-sheet header {
+            border-bottom: 1.5pt solid #000000 !important;
+            padding-bottom: 4pt !important;
+            margin-bottom: 8pt !important;
+            text-align: center !important;
+          }
+
+          #ats-resume-sheet h1 {
+            font-size: 20pt !important;
+            font-weight: bold !important;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            text-transform: uppercase !important;
+            margin-bottom: 2pt !important;
+            letter-spacing: 0.5pt !important;
+          }
+
+          #ats-resume-sheet header p {
+            font-size: 12pt !important;
+            font-weight: 600 !important;
+            line-height: 1.4 !important;
+            text-align: center !important;
+            text-transform: uppercase !important;
+            margin-bottom: 4pt !important;
+          }
+
+          #ats-resume-sheet header div {
+            font-size: 11pt !important;
+            line-height: 1.5 !important;
+          }
+
+          /* Section Headings in Print */
+          #ats-resume-sheet h2 {
+            font-size: 13pt !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            border-bottom: 1pt solid #000000 !important;
+            padding-bottom: 2pt !important;
+            margin-top: 10pt !important;
+            margin-bottom: 5pt !important;
+            line-height: 1.3 !important;
+            letter-spacing: 0.5pt !important;
+          }
+
+          /* Body Paragraphs & Descriptions */
+          #ats-resume-sheet p {
+            font-size: 12pt !important;
+            line-height: 1.5 !important;
+            margin-bottom: 4pt !important;
+          }
+
+          /* Bullet Lists */
+          #ats-resume-sheet ul {
+            margin-top: 2pt !important;
+            margin-bottom: 5pt !important;
+            padding-left: 18pt !important;
+            list-style-type: disc !important;
+          }
+
+          #ats-resume-sheet li {
+            font-size: 12pt !important;
+            line-height: 1.5 !important;
+            margin-bottom: 2pt !important;
+          }
+
+          /* Text Elements */
+          #ats-resume-sheet span {
+            font-size: 12pt !important;
+            line-height: 1.5 !important;
+          }
+
+          /* Links */
+          #ats-resume-sheet a {
+            color: #000000 !important;
+            text-decoration: underline !important;
+            font-size: 11.5pt !important;
+          }
+
           .no-print {
             display: none !important;
           }
-          .ats-entry {
+
+          .ats-entry,
+          .ats-section {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
+            margin-bottom: 6pt !important;
           }
+
+          /* Standard Letter Portrait Margin (0.75in / 19mm standard ATS) */
           @page {
             size: letter portrait;
-            margin: 12mm 15mm;
+            margin: 0.75in;
           }
         }
       `}</style>

@@ -80,7 +80,7 @@ export interface ResumeData {
     phone: string;
     location: string;
     websiteUrl: string;
-    linkedinUrl: string;
+    instagramUrl: string;
     youtubeOrGithubUrl: string;
     summary: string;
   };

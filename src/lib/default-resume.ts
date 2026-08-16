@@ -8,7 +8,7 @@ export const defaultResumeData: ResumeData = {
     phone: "+234 810 000 0000",
     location: "Lagos, Nigeria (Available Globally / Remote)",
     websiteUrl: "https://www.itsmanuel.me",
-    linkedinUrl: "https://linkedin.com/in/emmanuel-olaitan-editor",
+    instagramUrl: "https://instagram.com/itsmanuel_",
     youtubeOrGithubUrl: "https://youtube.com/@itsmanuel",
     summary:
       "Results-driven Senior Video Editor and Motion Graphics Specialist with 5+ years of expertise crafting high-retention video content, documentary storytelling, commercial explainers, and YouTube growth campaigns. Master of DaVinci Resolve Studio, Adobe Premiere Pro, and After Effects with proven track record of boosting viewer engagement by 40%+ across client channels totaling 10M+ collective impressions.",
