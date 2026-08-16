@@ -292,6 +292,18 @@ export default function ResumeEditor({
             </button>
           )}
 
+          {onExportDocx && (
+            <button
+              type="button"
+              onClick={onExportDocx}
+              className="px-3 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 text-xs font-medium border border-blue-500/30 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+              title="Export ATS resume as Microsoft Word (.docx) document"
+            >
+              <FileText size={13} />
+              <span>Export DOCX</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {

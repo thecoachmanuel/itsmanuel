@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { ResumeData } from "@/types/resume";
 import { defaultResumeData } from "@/lib/default-resume";
 import { mapAllVideoProjectsToResume } from "@/lib/project-sync";
+import { exportResumeToDocx } from "@/lib/docx-export";
 import ResumeEditor from "@/components/admin/resume/resume-editor";
 import ResumePreview from "@/components/admin/resume/resume-preview";
 import ATSScoreCard from "@/components/admin/resume/ats-score-card";
@@ -170,8 +171,24 @@ export default function AdminResumePage() {
     setHasUnsavedChanges(true);
   };
 
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportDocx = async () => {
+    setIsExportingDocx(true);
+    const toastId = toast.loading("Generating ATS Word document (.docx)...");
+    try {
+      await exportResumeToDocx(resumeData);
+      toast.success("✨ Exported ATS Resume as Word (.docx)!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate DOCX file", { id: toastId });
+    } finally {
+      setIsExportingDocx(false);
+    }
   };
 
   if (isLoading) {
@@ -226,11 +243,25 @@ export default function AdminResumePage() {
 
           <button
             type="button"
+            onClick={handleExportDocx}
+            disabled={isExportingDocx}
+            className="px-3 sm:px-4 py-2 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            title="Download ATS resume as Microsoft Word (.docx) document"
+          >
+            {isExportingDocx ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+            <span className="hidden sm:inline">Export Word (DOCX)</span>
+            <span className="sm:hidden">DOCX</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handlePrint}
             className="px-3 sm:px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Export standard ATS PDF"
           >
             <Printer size={14} />
             <span className="hidden sm:inline">Export ATS PDF</span>
+            <span className="sm:hidden">PDF</span>
           </button>
 
           <button
@@ -300,6 +331,8 @@ export default function AdminResumePage() {
               data={resumeData}
               onChange={handleResumeChange}
               onImportFromPortfolio={handleImportFromPortfolio}
+              onExportPdf={handlePrint}
+              onExportDocx={handleExportDocx}
             />
 
             <div className="hidden lg:block">
@@ -332,24 +365,36 @@ export default function AdminResumePage() {
       {/* ========================================================================= */}
       {/* MOBILE STICKY BOTTOM ACTION BAR (Non-Printable) */}
       {/* ========================================================================= */}
-      <div className="no-print lg:hidden sticky bottom-0 z-40 p-3 bg-[#060b18]/95 backdrop-blur-xl border-t border-white/10 flex items-center justify-between gap-2.5">
+      <div className="no-print lg:hidden sticky bottom-0 z-40 p-2.5 bg-[#060b18]/95 backdrop-blur-xl border-t border-white/10 grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={handleExportDocx}
+          disabled={isExportingDocx}
+          className="py-2 px-2 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 font-semibold text-[11px] border border-blue-500/30 flex items-center justify-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+          title="Export as Microsoft Word (.docx)"
+        >
+          {isExportingDocx ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+          <span>Word</span>
+        </button>
+
         <button
           type="button"
           onClick={handlePrint}
-          className="flex-1 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/15 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          className="py-2 px-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-[11px] border border-white/15 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+          title="Export as PDF"
         >
-          <Printer size={14} />
-          <span>Export ATS PDF</span>
+          <Printer size={13} />
+          <span>PDF</span>
         </button>
 
         <button
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="flex-1 py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+          className="py-2 px-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] shadow-lg shadow-blue-600/30 flex items-center justify-center gap-1 transition-all cursor-pointer disabled:opacity-50"
         >
-          {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-          <span>{isSaving ? "Saving..." : "Save Resume"}</span>
+          {isSaving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+          <span>{isSaving ? "Saving..." : "Save"}</span>
         </button>
       </div>
     </div>

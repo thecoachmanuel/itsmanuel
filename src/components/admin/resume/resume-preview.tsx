@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
   Download,
   Printer,
@@ -14,8 +14,12 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  FileText,
+  Loader2,
 } from "lucide-react";
 import { ResumeData } from "@/types/resume";
+import { exportResumeToDocx } from "@/lib/docx-export";
+import { toast } from "sonner";
 
 interface ResumePreviewProps {
   data: ResumeData;
@@ -29,9 +33,24 @@ export default function ResumePreview({
   onScaleChange,
 }: ResumePreviewProps) {
   const printRef = useRef<HTMLDivElement>(null);
+  const [isExportingDocx, setIsExportingDocx] = useState(false);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleExportDocx = async () => {
+    setIsExportingDocx(true);
+    const toastId = toast.loading("Generating ATS Word document (.docx)...");
+    try {
+      await exportResumeToDocx(data);
+      toast.success("✨ Exported ATS Resume as Word (.docx)!", { id: toastId });
+    } catch (err) {
+      console.error("DOCX export error:", err);
+      toast.error("Failed to generate DOCX file", { id: toastId });
+    } finally {
+      setIsExportingDocx(false);
+    }
   };
 
   const { personalInfo, skills, experience, projects, education, certifications, customSections, settings } = data;
@@ -93,6 +112,17 @@ export default function ResumePreview({
               </button>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={handleExportDocx}
+            disabled={isExportingDocx}
+            className="px-3.5 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+            title="Download ATS resume as Microsoft Word (.docx) file"
+          >
+            {isExportingDocx ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+            <span>Export DOCX</span>
+          </button>
 
           <button
             type="button"

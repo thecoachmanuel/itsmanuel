@@ -39,6 +39,7 @@ import ATSScoreCard from "@/components/admin/resume/ats-score-card";
 import { ResumeData } from "@/types/resume";
 import { defaultResumeData } from "@/lib/default-resume";
 import { mapAllVideoProjectsToResume } from "@/lib/project-sync";
+import { exportResumeToDocx } from "@/lib/docx-export";
 import { SiteContent, ContactMessage, TechnicalSkill } from "@/types/content";
 import { VideoProject, Client } from "@/types/videos";
 import Image from "next/image";
@@ -966,6 +967,8 @@ export default function AdminDashboardPage() {
                       setHasResumeChanges(true);
                     }}
                     onImportFromPortfolio={handleImportFromPortfolioForAdmin}
+                    onExportPdf={() => window.print()}
+                    onExportDocx={() => exportResumeToDocx(resumeData)}
                   />
 
                   <ATSScoreCard data={resumeData} />
