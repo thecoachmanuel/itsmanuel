@@ -257,7 +257,11 @@ export default function ResumeEditor({
   const editorTabs = [
     { id: "personal", label: "Contact & Bio", icon: User },
     { id: "experience", label: `Experience (${data.experience?.length || 0})`, icon: Briefcase },
-    { id: "projects", label: `Projects (${data.projects?.length || 0})`, icon: FolderGit2 },
+    {
+      id: "projects",
+      label: `Projects (${data.projects?.length || 0})${data.settings.showProjects ? "" : " • Hidden"}`,
+      icon: FolderGit2,
+    },
     { id: "skills", label: "Skills Matrix", icon: Award },
     { id: "education", label: "Education & Certs", icon: GraduationCap },
     { id: "settings", label: "ATS Layout", icon: Sliders },
@@ -617,51 +621,35 @@ export default function ResumeEditor({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: KEY PROJECTS & CLIENT DELIVERABLES */}
+        {/* TAB 3: KEY PROJECTS */}
         {/* ========================================================================= */}
         {activeTab === "projects" && (
           <div className="space-y-5 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">Key Projects & Client Deliverables</h3>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
-                      data.settings.showProjects
-                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
-                    }`}
-                  >
-                    {data.settings.showProjects ? "Shown on Resume" : "Hidden from Resume"}
-                  </span>
-                </div>
+                <h3 className="text-sm font-bold text-white">Key Projects & Client Deliverables</h3>
                 <p className="text-xs text-gray-400">
                   Highlight significant video projects, YouTube links, technical tools utilized, and metrics achieved.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {/* Hide / Unhide Toggle Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    const nextVal = !data.settings.showProjects;
-                    updateSettings("showProjects", nextVal);
-                    if (nextVal) {
-                      toast.success("✨ Key Projects & Deliverables section is now visible on your resume");
-                    } else {
-                      toast.info("Key Projects & Deliverables section is now hidden from your resume");
-                    }
-                  }}
-                  className={`px-3.5 py-1.5 rounded-xl border font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-sm ${
+                  onClick={() => updateSettings("showProjects", !data.settings.showProjects)}
+                  className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                     data.settings.showProjects
-                      ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                      : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+                      ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/20"
+                      : "bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20"
                   }`}
-                  title={data.settings.showProjects ? "Click to hide section from PDF/Resume" : "Click to unhide section on PDF/Resume"}
+                  title={
+                    data.settings.showProjects
+                      ? "Click to hide Key Projects & Client Deliverables from resume"
+                      : "Click to show Key Projects & Client Deliverables on resume"
+                  }
                 >
                   {data.settings.showProjects ? <Eye size={13} /> : <EyeOff size={13} />}
-                  <span>{data.settings.showProjects ? "Hide Section" : "Unhide Section"}</span>
+                  <span>{data.settings.showProjects ? "Visible on Resume" : "Hidden from Resume"}</span>
                 </button>
 
                 <button
@@ -686,22 +674,20 @@ export default function ResumeEditor({
               </div>
             </div>
 
-            {/* Hidden Section Notice Banner */}
+            {/* Hidden Section Notice */}
             {!data.settings.showProjects && (
-              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-200">
-                <div className="flex items-center gap-2.5">
-                  <EyeOff size={18} className="text-amber-400 flex-shrink-0" />
-                  <div>
-                    <strong className="font-bold text-amber-300">Section is Hidden:</strong> Key Projects & Client Deliverables are excluded from the live resume and PDF print export.
-                  </div>
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <EyeOff size={15} className="text-amber-400 flex-shrink-0" />
+                  <span>
+                    <strong>Key Projects & Client Deliverables</strong> section is currently{" "}
+                    <span className="font-bold underline">HIDDEN</span> from the ATS resume and PDF export.
+                  </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    updateSettings("showProjects", true);
-                    toast.success("✨ Key Projects & Deliverables section unhidden!");
-                  }}
-                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 border border-amber-500/40 font-semibold whitespace-nowrap cursor-pointer transition-colors"
+                  onClick={() => updateSettings("showProjects", true)}
+                  className="px-3 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-100 font-semibold text-xs whitespace-nowrap cursor-pointer transition-colors"
                 >
                   Unhide Section
                 </button>
