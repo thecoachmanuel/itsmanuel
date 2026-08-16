@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Check ytInitialPlayerResponse in script tags for richer details
-        const playerResponseMatch = html.match(/var ytInitialPlayerResponse\s*=\s*({.+?});(?:var|<\/script>)/s);
+        const playerResponseMatch = html.match(/var ytInitialPlayerResponse\s*=\s*({[\s\S]+?});(?:var|<\/script>)/);
         if (playerResponseMatch && playerResponseMatch[1]) {
           try {
             const playerResponse = JSON.parse(playerResponseMatch[1]);
