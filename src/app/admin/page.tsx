@@ -302,53 +302,170 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Project CRUD Actions
-  const handleSaveProject = (savedProject: VideoProject) => {
+  // Project CRUD Actions with instant auto-save and live publishing
+  const handleSaveProject = async (savedProject: VideoProject) => {
     if (!content) return;
     const existingIndex = content.projects.findIndex((p) => p.id === savedProject.id);
 
-    let updatedProjects;
-    if (existingIndex >= 0) {
+    let updatedProjects: VideoProject[];
+    const isEdit = existingIndex >= 0;
+    if (isEdit) {
       updatedProjects = [...content.projects];
       updatedProjects[existingIndex] = savedProject;
-      toast.success(`Project "${savedProject.video_title}" updated`);
     } else {
       updatedProjects = [savedProject, ...content.projects];
-      toast.success(`Project "${savedProject.video_title}" added`);
     }
 
-    updateContent("projects", updatedProjects);
+    const optimisticContent = { ...content, projects: updatedProjects };
+    setContent(optimisticContent);
+
+    const toastId = toast.loading(
+      isEdit
+        ? `Publishing updates for "${savedProject.video_title}" live...`
+        : `Publishing new project "${savedProject.video_title}" live...`
+    );
+
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { projects: updatedProjects },
+        }),
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) {
+          setContent(result.content);
+        }
+        setHasUnsavedChanges(false);
+        toast.success(
+          isEdit
+            ? `Project "${savedProject.video_title}" updated & live instantly!`
+            : `Project "${savedProject.video_title}" created & live instantly!`,
+          { id: toastId }
+        );
+      } else {
+        toast.error(result.error || "Failed to persist project change to MongoDB", { id: toastId });
+        setHasUnsavedChanges(true);
+      }
+    } catch {
+      toast.error("Network error while saving project", { id: toastId });
+      setHasUnsavedChanges(true);
+    }
   };
 
-  const handleDeleteProject = (id: string, title: string) => {
+  const handleDeleteProject = async (id: string, title: string) => {
     if (!content) return;
-    if (confirm(`Are you sure you want to delete "${title}"?`)) {
-      const updated = content.projects.filter((p) => p.id !== id);
-      updateContent("projects", updated);
-      toast.success(`Project "${title}" deleted`);
+    if (!confirm(`Are you sure you want to delete "${title}"? This will remove it from the live website immediately.`)) {
+      return;
+    }
+
+    const updated = content.projects.filter((p) => p.id !== id);
+    const optimisticContent = { ...content, projects: updated };
+    setContent(optimisticContent);
+
+    const toastId = toast.loading(`Deleting "${title}" & updating live website...`);
+
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { projects: updated },
+        }),
+      });
+
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) {
+          setContent(result.content);
+        }
+        setHasUnsavedChanges(false);
+        toast.success(`Project "${title}" deleted & website updated!`, { id: toastId });
+      } else {
+        toast.error(result.error || "Failed to delete project from database", { id: toastId });
+        setHasUnsavedChanges(true);
+      }
+    } catch {
+      toast.error("Network error while deleting project", { id: toastId });
+      setHasUnsavedChanges(true);
     }
   };
 
   // Categories Actions
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (!content || !newCategoryInput.trim()) return;
     const trimmed = newCategoryInput.trim();
-    if (!content.categories.includes(trimmed)) {
-      updateContent("categories", [...content.categories, trimmed]);
-      toast.success(`Category "${trimmed}" added`);
+    if (content.categories.includes(trimmed)) {
+      toast.info(`Category "${trimmed}" already exists`);
+      setNewCategoryInput("");
+      return;
     }
+
+    const updated = [...content.categories, trimmed];
+    setContent({ ...content, categories: updated });
     setNewCategoryInput("");
+
+    const toastId = toast.loading(`Saving category "${trimmed}"...`);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { categories: updated },
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) setContent(result.content);
+        setHasUnsavedChanges(false);
+        toast.success(`Category "${trimmed}" added & published live!`, { id: toastId });
+      } else {
+        toast.error(result.error || "Failed to save category", { id: toastId });
+      }
+    } catch {
+      toast.error("Network error while saving category", { id: toastId });
+    }
   };
 
-  const handleDeleteCategory = (cat: string) => {
+  const handleDeleteCategory = async (cat: string) => {
     if (!content) return;
     if (cat === "All") {
       toast.error("Cannot remove the default 'All' category");
       return;
     }
-    if (confirm(`Delete category "${cat}"? Projects with this category will not be deleted.`)) {
-      updateContent("categories", content.categories.filter((c) => c !== cat));
-      toast.success(`Category "${cat}" removed`);
+    if (!confirm(`Delete category "${cat}"? Projects with this category will not be deleted.`)) {
+      return;
+    }
+
+    const updated = content.categories.filter((c) => c !== cat);
+    setContent({ ...content, categories: updated });
+
+    const toastId = toast.loading(`Removing category "${cat}"...`);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { categories: updated },
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) setContent(result.content);
+        setHasUnsavedChanges(false);
+        toast.success(`Category "${cat}" removed & website updated!`, { id: toastId });
+      } else {
+        toast.error(result.error || "Failed to remove category", { id: toastId });
+      }
+    } catch {
+      toast.error("Network error while removing category", { id: toastId });
     }
   };
 

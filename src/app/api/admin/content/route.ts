@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSiteContent, saveSiteContent, updateSiteContent } from "@/lib/content-store";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
@@ -11,7 +13,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const content = await getSiteContent();
+    const content = await getSiteContent(true);
     return NextResponse.json({ success: true, content });
   } catch (error) {
     console.error("Failed to fetch site content:", error);

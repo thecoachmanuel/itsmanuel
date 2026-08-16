@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Youtube, Image as ImageIcon, Upload, Loader2, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import {
+  X,
+  Youtube,
+  Image as ImageIcon,
+  Upload,
+  Loader2,
+  Plus,
+  Trash2,
+  Sparkles,
+  ExternalLink,
+  Check,
+  RefreshCw,
+} from "lucide-react";
 import { VideoProject } from "@/types/videos";
 import Image from "next/image";
 import { toast } from "sonner";
+import { extractYouTubeId } from "@/lib/helper";
 
 interface ProjectModalProps {
   isOpen: boolean;
@@ -42,6 +55,8 @@ export default function ProjectModal({
   const [softwareInput, setSoftwareInput] = useState("");
   const [galleryInput, setGalleryInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isFetchingMeta, setIsFetchingMeta] = useState(false);
+  const [lastFetchedId, setLastFetchedId] = useState("");
 
   useEffect(() => {
     if (project) {
@@ -52,6 +67,7 @@ export default function ProjectModal({
         project_images: project.project_images || [],
         software_used: project.software_used || ["DaVinci Resolve"],
       });
+      setLastFetchedId(project.cover_image || project.id || "");
     } else {
       setFormData({
         id: "",
@@ -69,31 +85,102 @@ export default function ProjectModal({
         duration: "5:00",
         software_used: ["DaVinci Resolve"],
       });
+      setLastFetchedId("");
     }
   }, [project, isOpen, availableCategories]);
 
-  // Extract YouTube ID from link
+  // Fetch YouTube Metadata
+  const fetchYouTubeMetadata = useCallback(
+    async (urlOrId: string, forceOverwrite = false) => {
+      const extractedId = extractYouTubeId(urlOrId);
+      if (!extractedId) {
+        if (forceOverwrite) {
+          toast.error("Please enter a valid YouTube video link first");
+        }
+        return;
+      }
+
+      setIsFetchingMeta(true);
+      const toastId = forceOverwrite ? toast.loading("Fetching video metadata from YouTube...") : undefined;
+
+      try {
+        const res = await fetch("/api/admin/youtube-info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: urlOrId, videoId: extractedId }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+          setFormData((prev) => {
+            const shouldFillTitle =
+              forceOverwrite ||
+              !prev.video_title.trim() ||
+              prev.video_title.startsWith("New Video");
+
+            const shouldFillDesc = forceOverwrite || !prev.video_description.trim();
+            const shouldFillClient = forceOverwrite || !prev.client_name.trim();
+            const shouldFillDuration = forceOverwrite || !prev.duration || prev.duration === "5:00";
+            const shouldFillDate = forceOverwrite || !prev.publish_date;
+
+            const existingTags = prev.tags || [];
+            const incomingTags = data.tags || [];
+            const combinedTags = Array.from(new Set([...existingTags, ...incomingTags]));
+
+            return {
+              ...prev,
+              // ALWAYS replace slug/id and cover_image with the extracted YouTube ID
+              id: extractedId,
+              cover_image: extractedId,
+              video_link: prev.video_link || data.video_link,
+              video_title: shouldFillTitle && data.video_title ? data.video_title : prev.video_title,
+              video_description: shouldFillDesc && data.video_description ? data.video_description : prev.video_description,
+              client_name: shouldFillClient && data.client_name ? data.client_name : prev.client_name,
+              duration: shouldFillDuration && data.duration ? data.duration : prev.duration,
+              publish_date: shouldFillDate && data.publish_date ? data.publish_date : prev.publish_date,
+              tags: combinedTags.length > 0 ? combinedTags : prev.tags,
+            };
+          });
+
+          setLastFetchedId(extractedId);
+
+          if (toastId) {
+            toast.success(`✨ Details loaded from YouTube! Slug set to "${extractedId}"`, { id: toastId });
+          } else {
+            toast.success(`✨ YouTube info auto-populated (Slug: ${extractedId})`);
+          }
+        } else {
+          if (toastId) {
+            toast.error(data.error || "Could not fetch YouTube metadata", { id: toastId });
+          }
+        }
+      } catch (err) {
+        console.warn("YouTube fetch error:", err);
+        if (toastId) {
+          toast.error("Failed to connect to YouTube metadata API", { id: toastId });
+        }
+      } finally {
+        setIsFetchingMeta(false);
+      }
+    },
+    []
+  );
+
+  // Extract YouTube ID from link, auto-replace slug, and auto-fetch metadata
   const handleVideoLinkChange = (url: string) => {
-    let extractedId = "";
-    if (url.includes("youtube.com/shorts/")) {
-      const match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-      if (match) extractedId = match[1];
-    } else if (url.includes("youtu.be/")) {
-      const match = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-      if (match) extractedId = match[1];
-    } else if (url.includes("watch?v=")) {
-      const match = url.match(/v=([a-zA-Z0-9_-]{11})/);
-      if (match) extractedId = match[1];
-    } else if (/^[a-zA-Z0-9_-]{11}$/.test(url.trim())) {
-      extractedId = url.trim();
-    }
+    const extractedId = extractYouTubeId(url);
 
     setFormData((prev) => ({
       ...prev,
       video_link: url,
+      // ALWAYS replace slug/id with the extracted YouTube video ID when detected
+      id: extractedId || prev.id,
       cover_image: extractedId || prev.cover_image,
-      id: prev.id || extractedId || `project-${Date.now()}`,
     }));
+
+    if (extractedId && extractedId !== lastFetchedId) {
+      fetchYouTubeMetadata(url, false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetField: "client_image" | "gallery") => {
@@ -231,55 +318,136 @@ export default function ProjectModal({
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6 custom-scrollbar">
-          {/* Top Row: Video URL & ID with Auto-Detection */}
+          {/* Top Row: Video URL & ID with Auto-Detection & Instant YouTube Sync */}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                YouTube Video Link or ID *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.video_link}
-                onChange={(e) => handleVideoLinkChange(e.target.value)}
-                placeholder="https://youtu.be/... or YouTube Watch URL"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-              />
-              <p className="text-[11px] text-gray-500 mt-1">
-                Paste any YouTube URL — thumbnail ID will auto-populate.
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-gray-300">
+                  YouTube Video Link or ID *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => fetchYouTubeMetadata(formData.video_link, true)}
+                  disabled={isFetchingMeta || !formData.video_link}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 disabled:opacity-40 flex items-center gap-1 font-medium transition-colors cursor-pointer"
+                  title="Auto-fetch and populate video title, description, channel name, duration & tags from YouTube"
+                >
+                  {isFetchingMeta ? (
+                    <Loader2 size={12} className="animate-spin text-blue-400" />
+                  ) : (
+                    <Sparkles size={12} className="text-amber-400" />
+                  )}
+                  <span>{isFetchingMeta ? "Fetching..." : "Auto-Fill from YouTube"}</span>
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  required
+                  value={formData.video_link}
+                  onChange={(e) => handleVideoLinkChange(e.target.value)}
+                  placeholder="https://youtu.be/... or https://youtube.com/watch?v=..."
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 pr-10"
+                />
+                {isFetchingMeta && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 size={16} className="animate-spin text-blue-400" />
+                  </div>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-1">
+                Paste any YouTube URL — auto-replaces slug, thumbnail, title & description!
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-300 mb-1.5">
-                Project ID / Slug *
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-gray-300">
+                  Project ID / URL Slug *
+                </label>
+                {formData.id && (
+                  <span className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono flex items-center gap-1">
+                    <Check size={10} /> Auto-synced
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 required
                 value={formData.id}
                 onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                 placeholder="e.g. rVVeLdouViU or custom-slug"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40 font-mono"
               />
+              <p className="text-[11px] text-gray-400 mt-1">
+                Slug updates automatically to match the YouTube video ID.
+              </p>
             </div>
           </div>
 
-          {/* Live Preview Bar */}
+          {/* Live YouTube Preview Card */}
           {formData.cover_image && (
-            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col sm:flex-row items-center gap-4">
-              <div className="relative w-40 aspect-video rounded-xl overflow-hidden bg-black border border-white/10 flex-shrink-0">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-blue-500/20 shadow-lg shadow-blue-950/20 flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative w-44 aspect-video rounded-xl overflow-hidden bg-black border border-white/10 flex-shrink-0 shadow-md">
                 <Image
                   src={`https://img.youtube.com/vi/${formData.cover_image}/maxresdefault.jpg`}
                   alt="Thumbnail preview"
                   fill
+                  unoptimized
                   className="object-cover"
                 />
+                {formData.duration && (
+                  <span className="absolute bottom-1 right-1 bg-black/80 text-[10px] px-1.5 py-0.5 rounded text-white font-mono">
+                    {formData.duration}
+                  </span>
+                )}
               </div>
-              <div className="text-xs text-gray-400 space-y-1">
-                <p className="text-white font-semibold">YouTube Thumbnail Detected</p>
-                <p>Thumbnail Key: <code className="text-blue-300">{formData.cover_image}</code></p>
-                <p>Auto-synced from YouTube high-resolution stream</p>
+
+              <div className="flex-1 w-full text-xs text-gray-400 space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-300 font-semibold text-[11px]">
+                      <Youtube size={12} className="text-red-400" />
+                      YouTube Connected
+                    </span>
+                    <code className="text-gray-300 font-mono bg-white/5 px-2 py-0.5 rounded">
+                      ID: {formData.cover_image}
+                    </code>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fetchYouTubeMetadata(formData.video_link || formData.cover_image, true)}
+                      disabled={isFetchingMeta}
+                      className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-colors flex items-center gap-1 cursor-pointer text-[11px]"
+                    >
+                      <RefreshCw size={11} className={isFetchingMeta ? "animate-spin" : ""} />
+                      <span>Refresh Info</span>
+                    </button>
+
+                    {formData.video_link && (
+                      <a
+                        href={formData.video_link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 transition-colors flex items-center gap-1 text-[11px]"
+                      >
+                        <ExternalLink size={11} />
+                        <span>Watch</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-white font-medium text-sm line-clamp-1">
+                  {formData.video_title || "Untitled Video"}
+                </p>
+                <p className="text-gray-400 text-[11px]">
+                  {formData.client_name ? `Channel / Client: ${formData.client_name} • ` : ""}
+                  Published: {formData.publish_date}
+                </p>
               </div>
             </div>
           )}

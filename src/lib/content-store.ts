@@ -115,9 +115,9 @@ function mergeWithDefaults(dbContent: Partial<SiteContent>): SiteContent {
   };
 }
 
-export async function getSiteContent(): Promise<SiteContent> {
+export async function getSiteContent(forceFresh = false): Promise<SiteContent> {
   const now = Date.now();
-  if (cachedContent && now - lastCacheTime < CACHE_TTL_MS) {
+  if (!forceFresh && cachedContent && now - lastCacheTime < CACHE_TTL_MS) {
     return cachedContent;
   }
 
@@ -179,17 +179,25 @@ export async function saveSiteContent(content: SiteContent): Promise<SiteContent
   // Always write to local backup as safety layer
   await writeLocalBackup(updatedData);
 
-  // Update in-memory cache
+  // Update in-memory cache immediately
   cachedContent = updatedData;
   lastCacheTime = Date.now();
 
   // Instant revalidation for all Next.js pages and layouts
   try {
     revalidatePath("/", "layout");
+    revalidatePath("/", "page");
     revalidatePath("/about", "page");
     revalidatePath("/skills", "page");
     revalidatePath("/contact", "page");
-    revalidatePath("/project", "layout");
+    revalidatePath("/project/[id]", "page");
+    if (updatedData.projects && Array.isArray(updatedData.projects)) {
+      for (const p of updatedData.projects) {
+        if (p.id) {
+          revalidatePath(`/project/${p.id}`, "page");
+        }
+      }
+    }
   } catch (e) {
     console.warn("revalidatePath notice:", e);
   }
@@ -200,7 +208,7 @@ export async function saveSiteContent(content: SiteContent): Promise<SiteContent
 export async function updateSiteContent(
   partialContent: Partial<SiteContent>
 ): Promise<SiteContent> {
-  const current = await getSiteContent();
+  const current = await getSiteContent(true);
   const merged: SiteContent = {
     ...current,
     ...partialContent,
@@ -212,7 +220,10 @@ export async function updateSiteContent(
     projectsSection: partialContent.projectsSection
       ? { ...current.projectsSection, ...partialContent.projectsSection }
       : current.projectsSection,
+    projects: partialContent.projects !== undefined ? partialContent.projects : current.projects,
+    categories: partialContent.categories !== undefined ? partialContent.categories : current.categories,
     about: partialContent.about ? { ...current.about, ...partialContent.about } : current.about,
+    clients: partialContent.clients !== undefined ? partialContent.clients : current.clients,
     skills: partialContent.skills ? { ...current.skills, ...partialContent.skills } : current.skills,
     contact: partialContent.contact ? { ...current.contact, ...partialContent.contact } : current.contact,
     footer: partialContent.footer ? { ...current.footer, ...partialContent.footer } : current.footer,
@@ -226,7 +237,7 @@ export async function updateSiteContent(
 
 // Project Specific CRUD Helpers
 export async function getAllProjects(): Promise<VideoProject[]> {
-  const content = await getSiteContent();
+  const content = await getSiteContent(true);
   return content.projects || [];
 }
 
@@ -236,7 +247,7 @@ export async function getProjectById(id: string): Promise<VideoProject | undefin
 }
 
 export async function getClients(): Promise<Client[]> {
-  const content = await getSiteContent();
+  const content = await getSiteContent(true);
   return content.clients || [];
 }
 

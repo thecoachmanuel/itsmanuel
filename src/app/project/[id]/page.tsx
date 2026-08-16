@@ -4,14 +4,9 @@ import { getAllProjects, getProjectById } from "@/lib/content-store";
 import ProjectDetails from "@/components/project-details";
 
 export const dynamic = "force-dynamic";
-
-// Generate static params for initial build
-export async function generateStaticParams() {
-  const projects = await getAllProjects();
-  return projects.map((project) => ({
-    id: project.id,
-  }));
-}
+export const dynamicParams = true;
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 // Generate metadata dynamically for each project
 export async function generateMetadata({

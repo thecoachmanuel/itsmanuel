@@ -25,13 +25,13 @@ export default function ProjectGrid({ initialCategories, initialProjects }: Proj
 
   // Load projects for selected category
   useEffect(() => {
-    let projects;
+    let projects: VideoProject[];
     if (selectedCategory === "All") {
-        projects = initialProjects;
+      projects = initialProjects;
     } else {
-        projects = getVideoProjectsByCategory(selectedCategory);
+      projects = getVideoProjectsByCategory(selectedCategory, initialProjects);
     }
-    
+
     setAllProjects(projects);
     setDisplayedProjects(projects.slice(0, ITEMS_PER_PAGE));
     setCurrentPage(1);

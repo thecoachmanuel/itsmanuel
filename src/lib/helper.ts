@@ -97,19 +97,40 @@ export function getClients(clients: Client[] = clientsData): Client[] {
   return clients;
 }
 
+// Helper function to extract YouTube video ID from any link format
+export const extractYouTubeId = (url: string): string | null => {
+  if (!url || typeof url !== "string") return null;
+  const trimmed = url.trim();
+
+  if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const shortsMatch = trimmed.match(/(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (shortsMatch) return shortsMatch[1];
+
+  const youtuBeMatch = trimmed.match(/(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (youtuBeMatch) return youtuBeMatch[1];
+
+  const watchMatch = trimmed.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) return watchMatch[1];
+
+  const embedMatch = trimmed.match(/(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) return embedMatch[1];
+
+  const liveMatch = trimmed.match(/(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/);
+  if (liveMatch) return liveMatch[1];
+
+  const genericMatch = trimmed.match(/(?:v\/|watch\?v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+  if (genericMatch) return genericMatch[1];
+
+  return null;
+};
+
 // Helper function to get the proper embed link
 export const getYouTubeEmbedUrl = (url: string): string | null => {
   if (!url) return null;
 
-  // Handle Shorts
-  if (url.includes("youtube.com/shorts/")) {
-    const match = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
-    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
-  }
-
-  // Handle Regular YouTube video
-  const match = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|.+\?v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-  );
-  return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+  const id = extractYouTubeId(url);
+  return id ? `https://www.youtube.com/embed/${id}` : null;
 };
