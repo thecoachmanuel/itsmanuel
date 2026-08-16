@@ -42,6 +42,7 @@ interface ResumeEditorProps {
   onChange: (updated: ResumeData) => void;
   onImportFromPortfolio?: () => void;
   onExportPdf?: () => void;
+  onExportDocx?: () => void;
 }
 
 export default function ResumeEditor({
@@ -49,6 +50,7 @@ export default function ResumeEditor({
   onChange,
   onImportFromPortfolio,
   onExportPdf,
+  onExportDocx,
 }: ResumeEditorProps) {
   const [activeTab, setActiveTab] = useState<string>("personal");
   const [isProjectSyncOpen, setIsProjectSyncOpen] = useState(false);
