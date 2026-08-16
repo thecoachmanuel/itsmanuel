@@ -53,11 +53,11 @@ export default function ResumePreview({
   return (
     <div className="flex flex-col items-center w-full">
       {/* Top Floating Toolbar (Non-printable) */}
-      <div className="no-print w-full flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10 mb-4 backdrop-blur-md">
+      <div className="no-print w-full flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/[0.03] border border-white/10 mb-3 backdrop-blur-md">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-gray-300">ATS Sheet Preview</span>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-            {settings.template.toUpperCase()} (Times New Roman / 12pt / 1.5 Spacing in PDF)
+            {settings.template.toUpperCase()} (Times New Roman / 12pt / 1.5 Spacing)
           </span>
         </div>
 
@@ -106,26 +106,26 @@ export default function ResumePreview({
       </div>
 
       {/* Printable Sheet Container */}
-      <div className="w-full overflow-x-auto flex justify-center py-2 custom-scrollbar">
+      <div className="w-full overflow-x-auto flex justify-center py-1 custom-scrollbar">
         <div
           ref={printRef}
           id="ats-resume-sheet"
           style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}
-          className={`ats-resume-document w-full max-w-[850px] min-h-[1100px] bg-white text-[#111827] p-8 sm:p-12 rounded-xl shadow-2xl transition-transform duration-200 border border-gray-200 selection:bg-blue-200 selection:text-blue-900 font-serif ${fontSizeClass}`}
+          className={`ats-resume-document w-full max-w-[850px] min-h-[1050px] bg-white text-[#111827] px-8 sm:px-12 py-6 sm:py-8 rounded-xl shadow-2xl transition-transform duration-200 border border-gray-200 selection:bg-blue-200 selection:text-blue-900 font-serif ${fontSizeClass}`}
         >
           {/* ========================================================================= */}
           {/* HEADER (NAME & ATS-PARSEABLE CONTACT INFO) */}
           {/* ========================================================================= */}
-          <header className="border-b-2 border-gray-800 pb-3 mb-4 text-center">
-            <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-gray-900 mb-1 font-serif">
+          <header className="border-b-2 border-gray-800 pb-2.5 mb-3 text-center mt-0 pt-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-wide text-gray-900 mb-1 font-serif leading-tight">
               {personalInfo.fullName || "Emmanuel Olaitan"}
             </h1>
-            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-2">
+            <p className="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider mb-1.5 leading-snug">
               {personalInfo.professionalTitle || "Senior Video Editor & Post-Production Specialist"}
             </p>
 
             {/* Standard Single-Line Contact Strip */}
-            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 text-xs text-gray-600 font-medium">
+            <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-0.5 text-xs text-gray-600 font-medium">
               {personalInfo.email && (
                 <a href={`mailto:${personalInfo.email}`} className="hover:text-blue-700 underline-offset-2">
                   {personalInfo.email}
@@ -177,7 +177,7 @@ export default function ResumePreview({
             {/* ========================================================================= */}
             {settings.showSummary && personalInfo.summary && (
               <section className="ats-section">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2 font-serif">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-1.5 font-serif">
                   Professional Summary
                 </h2>
                 <p className="text-gray-800 text-justify leading-relaxed">
@@ -191,10 +191,10 @@ export default function ResumePreview({
             {/* ========================================================================= */}
             {settings.showSkills && skills && skills.length > 0 && (
               <section className="ats-section">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2 font-serif">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-1.5 font-serif">
                   Core Competencies & Technical Skills
                 </h2>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {skills.map((cat) => (
                     <div key={cat.id} className="flex flex-col sm:flex-row sm:items-baseline gap-1 text-xs">
                       <span className="font-bold text-gray-900 min-w-[190px] flex-shrink-0">
@@ -214,13 +214,13 @@ export default function ResumePreview({
             {/* ========================================================================= */}
             {settings.showExperience && experience && experience.length > 0 && (
               <section className="ats-section">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2.5 font-serif">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-2 font-serif">
                   Professional Experience
                 </h2>
-                <div className="space-y-3.5">
+                <div className="space-y-3">
                   {experience.map((exp) => (
                     <div key={exp.id} className="ats-entry break-inside-avoid">
-                      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 mb-1">
+                      <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 mb-0.5">
                         <div>
                           <span className="font-bold text-gray-900 text-sm">
                             {exp.title}
@@ -236,7 +236,7 @@ export default function ResumePreview({
                       </div>
 
                       {exp.highlights && exp.highlights.length > 0 && (
-                        <ul className="list-disc list-outside pl-4 space-y-1 text-gray-800 text-xs">
+                        <ul className="list-disc list-outside pl-4 space-y-0.5 text-gray-800 text-xs">
                           {exp.highlights.map((bullet, idx) => (
                             <li key={idx} className="leading-relaxed">
                               {bullet}
@@ -255,10 +255,10 @@ export default function ResumePreview({
             {/* ========================================================================= */}
             {settings.showProjects && projects && projects.length > 0 && (
               <section className="ats-section">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2.5 font-serif">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-2 font-serif">
                   Key Projects & Client Deliverables
                 </h2>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {projects.map((proj) => (
                     <div key={proj.id} className="ats-entry break-inside-avoid">
                       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 mb-0.5">
@@ -289,7 +289,7 @@ export default function ResumePreview({
                       </div>
 
                       {proj.description && (
-                        <p className="text-xs text-gray-700 mb-1 leading-relaxed">
+                        <p className="text-xs text-gray-700 mb-0.5 leading-relaxed">
                           {proj.description}
                         </p>
                       )}
@@ -314,11 +314,11 @@ export default function ResumePreview({
             {/* ========================================================================= */}
             {(settings.showEducation || settings.showCertifications) && (
               <section className="ats-section">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2 font-serif">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-1.5 font-serif">
                   Education & Professional Credentials
                 </h2>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {settings.showEducation &&
                     education &&
                     education.map((edu) => (
@@ -361,10 +361,10 @@ export default function ResumePreview({
               customSections &&
               customSections.map((sec) => (
                 <section key={sec.id} className="ats-section">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-1 mb-2 font-serif">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-900 border-b border-gray-300 pb-0.5 mb-1.5 font-serif">
                     {sec.title}
                   </h2>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {sec.items.map((item) => (
                       <div key={item.id} className="text-xs">
                         <div className="flex items-baseline justify-between">
@@ -383,9 +383,25 @@ export default function ResumePreview({
         </div>
       </div>
 
-      {/* Global CSS for Print Mode (Standard ATS: Times New Roman, 12pt, 1.5 line spacing, standard 0.75in margins) */}
+      {/* Global CSS for Print Mode (Zero Page Margin suppresses browser default header/footer timestamps and URLs) */}
       <style jsx global>{`
+        @page {
+          size: letter portrait;
+          margin: 0 !important; /* Zero margin suppresses browser default headers (date/title) and footers (URL) */
+        }
+
         @media print {
+          /* Reset root layout */
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
           /* Hide all UI elements, navigation bars, controls */
           body * {
             visibility: hidden;
@@ -399,15 +415,16 @@ export default function ResumePreview({
           }
 
           #ats-resume-sheet {
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
+            position: static !important;
+            display: block !important;
             width: 100% !important;
             max-width: 100% !important;
+            min-height: auto !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 0.55in 0.75in 0.65in 0.75in !important; /* Standard ATS margins directly on document */
             box-shadow: none !important;
             border: none !important;
+            border-radius: 0 !important;
             transform: none !important;
             background: #ffffff !important;
             color: #000000 !important;
@@ -424,17 +441,19 @@ export default function ResumePreview({
           /* Header Styling in Print */
           #ats-resume-sheet header {
             border-bottom: 1.5pt solid #000000 !important;
-            padding-bottom: 4pt !important;
-            margin-bottom: 8pt !important;
+            padding-bottom: 3pt !important;
+            margin-top: 0 !important;
+            margin-bottom: 7pt !important;
             text-align: center !important;
           }
 
           #ats-resume-sheet h1 {
             font-size: 20pt !important;
             font-weight: bold !important;
-            line-height: 1.2 !important;
+            line-height: 1.15 !important;
             text-align: center !important;
             text-transform: uppercase !important;
+            margin-top: 0 !important;
             margin-bottom: 2pt !important;
             letter-spacing: 0.5pt !important;
           }
@@ -442,15 +461,15 @@ export default function ResumePreview({
           #ats-resume-sheet header p {
             font-size: 12pt !important;
             font-weight: 600 !important;
-            line-height: 1.4 !important;
+            line-height: 1.3 !important;
             text-align: center !important;
             text-transform: uppercase !important;
-            margin-bottom: 4pt !important;
+            margin-bottom: 3pt !important;
           }
 
           #ats-resume-sheet header div {
             font-size: 11pt !important;
-            line-height: 1.5 !important;
+            line-height: 1.4 !important;
           }
 
           /* Section Headings in Print */
@@ -459,10 +478,10 @@ export default function ResumePreview({
             font-weight: bold !important;
             text-transform: uppercase !important;
             border-bottom: 1pt solid #000000 !important;
-            padding-bottom: 2pt !important;
-            margin-top: 10pt !important;
-            margin-bottom: 5pt !important;
-            line-height: 1.3 !important;
+            padding-bottom: 1.5pt !important;
+            margin-top: 8pt !important;
+            margin-bottom: 4pt !important;
+            line-height: 1.25 !important;
             letter-spacing: 0.5pt !important;
           }
 
@@ -470,21 +489,21 @@ export default function ResumePreview({
           #ats-resume-sheet p {
             font-size: 12pt !important;
             line-height: 1.5 !important;
-            margin-bottom: 4pt !important;
+            margin-bottom: 3pt !important;
           }
 
           /* Bullet Lists */
           #ats-resume-sheet ul {
-            margin-top: 2pt !important;
-            margin-bottom: 5pt !important;
-            padding-left: 18pt !important;
+            margin-top: 1pt !important;
+            margin-bottom: 4pt !important;
+            padding-left: 16pt !important;
             list-style-type: disc !important;
           }
 
           #ats-resume-sheet li {
             font-size: 12pt !important;
             line-height: 1.5 !important;
-            margin-bottom: 2pt !important;
+            margin-bottom: 1.5pt !important;
           }
 
           /* Text Elements */
@@ -508,13 +527,7 @@ export default function ResumePreview({
           .ats-section {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
-            margin-bottom: 6pt !important;
-          }
-
-          /* Standard Letter Portrait Margin (0.75in / 19mm standard ATS) */
-          @page {
-            size: letter portrait;
-            margin: 0.75in;
+            margin-bottom: 5pt !important;
           }
         }
       `}</style>
