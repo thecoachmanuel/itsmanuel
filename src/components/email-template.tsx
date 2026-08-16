@@ -83,7 +83,7 @@ export const EmailTemplate = ({
             system.
           </Text>
           <Text style={footerLink}>
-            <a href="https://www.itsmanuel.me" style={footerLinkStyle}>
+            <a href="https://itsmanuel.vercel.app" style={footerLinkStyle}>
               Visit Your Portfolio
             </a>
           </Text>

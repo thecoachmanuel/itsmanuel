@@ -34,7 +34,7 @@ export const initialSiteContent: SiteContent = {
       "Audio Sync",
     ],
     authorName: "Emmanuel Olaitan",
-    authorUrl: "https://www.itsmanuel.me",
+    authorUrl: "https://itsmanuel.vercel.app",
     siteUrl: "https://itsmanuel.vercel.app",
     ogImage: "/itsmanuel.jpg",
     twitterHandle: "@itsmanuel",

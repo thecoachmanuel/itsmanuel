@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     "Lower Thirds",
     "Audio Sync",
   ],
-  authors: [{ name: "Emmanuel Olaitan", url: "https://www.itsmanuel.me" }],
+  authors: [{ name: "Emmanuel Olaitan", url: "https://itsmanuel.vercel.app" }],
   creator: "Emmanuel Olaitan",
   publisher: "Emmanuel Olaitan",
   robots: {
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://www.itsmanuel.me",
+    url: "https://itsmanuel.vercel.app",
     title: "Emmanuel Olaitan – Video Editor & Motion Graphics Designer",
     description:
       "Passionate Video Editor and Motion Graphics Designer delivering clean, cinematic edits and dynamic visual storytelling using DaVinci Resolve, Premiere Pro, and After Effects.",
@@ -82,7 +82,7 @@ export const metadata: Metadata = {
     google: "your-google-verification-code",
   },
   alternates: {
-    canonical: "https://www.itsmanuel.me",
+    canonical: "https://itsmanuel.vercel.app",
   },
   category: "Video Editing",
 };
@@ -105,10 +105,10 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Person",
               name: "Emmanuel Olaitan",
-              url: "https://www.itsmanuel.me",
+              url: "https://itsmanuel.vercel.app",
               image: "/itsmanuel.jpg",
               sameAs: [
-                "https://www.itsmanuel.me",
+                "https://itsmanuel.vercel.app",
               ],
               jobTitle: "Video Editor & Motion Graphics Designer",
               knowsAbout: [

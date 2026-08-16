@@ -9,7 +9,7 @@ export interface ProjectSyncOptions {
 
 export function formatVideoUrl(project: VideoProject, linkFormat: "youtube" | "portfolio" = "youtube"): string {
   if (linkFormat === "portfolio") {
-    return `https://www.itsmanuel.me/project/${project.id}`;
+    return `https://itsmanuel.vercel.app/project/${project.id}`;
   }
 
   // YouTube format

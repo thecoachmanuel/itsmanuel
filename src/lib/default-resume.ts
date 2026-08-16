@@ -7,7 +7,7 @@ export const defaultResumeData: ResumeData = {
     email: "eomedia0@gmail.com",
     phone: "+234 810 000 0000",
     location: "Lagos, Nigeria (Available Globally / Remote)",
-    websiteUrl: "https://www.itsmanuel.me",
+    websiteUrl: "https://itsmanuel.vercel.app",
     instagramUrl: "https://instagram.com/itsmanuel_",
     youtubeOrGithubUrl: "https://youtube.com/@itsmanuel",
     summary:
@@ -113,7 +113,7 @@ export const defaultResumeData: ResumeData = {
       name: "Engineering Career Masterclass Series",
       role: "Lead Editor & Story Producer",
       tools: ["DaVinci Resolve", "After Effects", "Fairlight"],
-      link: "https://www.itsmanuel.me/project/rVVeLdouViU",
+      link: "https://itsmanuel.vercel.app/project/rVVeLdouViU",
       description: "Comprehensive educational series with complex software architecture explanations and custom visual pacing.",
       highlights: [
         "Achieved 68% average percentage viewed (APV) on YouTube, exceeding industry benchmark by 28%.",
@@ -125,7 +125,7 @@ export const defaultResumeData: ResumeData = {
       name: "Full Stack Roadmap & System Design Docu-Style",
       role: "Post-Production Director",
       tools: ["Premiere Pro", "After Effects", "Audition"],
-      link: "https://www.itsmanuel.me/project/JSZmQxg3fos",
+      link: "https://itsmanuel.vercel.app/project/JSZmQxg3fos",
       description: "High-production documentary style explainer video featuring motion graphics and cinematic audio mixing.",
       highlights: [
         "Generated 250k+ organic views within 30 days of release.",

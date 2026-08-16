@@ -141,7 +141,7 @@ export default function ResumeEditor({
       name: "Featured Video Campaign",
       role: "Lead Video Editor",
       tools: ["DaVinci Resolve", "After Effects"],
-      link: "https://www.itsmanuel.me",
+      link: "https://itsmanuel.vercel.app",
       description: "High-impact video storytelling with custom sound design and pacing.",
       highlights: ["Achieved 45%+ average retention rate and 100k+ organic views."],
     };
@@ -412,7 +412,7 @@ export default function ResumeEditor({
                   type="text"
                   value={data.personalInfo.websiteUrl}
                   onChange={(e) => updatePersonalInfo("websiteUrl", e.target.value)}
-                  placeholder="https://www.itsmanuel.me"
+                  placeholder="https://itsmanuel.vercel.app"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 />
               </div>
@@ -783,7 +783,7 @@ export default function ResumeEditor({
                         type="text"
                         value={proj.link || ""}
                         onChange={(e) => updateProject(pIdx, { ...proj, link: e.target.value })}
-                        placeholder="https://www.itsmanuel.me/project/..."
+                        placeholder="https://itsmanuel.vercel.app/project/..."
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       />
                     </div>
