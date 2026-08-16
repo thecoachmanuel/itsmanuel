@@ -13,8 +13,9 @@ import {
   ExternalLink,
   Check,
   RefreshCw,
+  Building2,
 } from "lucide-react";
-import { VideoProject } from "@/types/videos";
+import { VideoProject, Client } from "@/types/videos";
 import Image from "next/image";
 import { toast } from "sonner";
 import { extractYouTubeId } from "@/lib/helper";
@@ -25,6 +26,9 @@ interface ProjectModalProps {
   project?: VideoProject | null;
   onSave: (project: VideoProject) => void;
   availableCategories: string[];
+  availableClients?: Client[];
+  onAddNewClient?: (client: Client) => Promise<void> | void;
+  onDeleteClient?: (clientId: string, clientName?: string) => Promise<void> | void;
 }
 
 export default function ProjectModal({
@@ -33,6 +37,9 @@ export default function ProjectModal({
   project,
   onSave,
   availableCategories,
+  availableClients = [],
+  onAddNewClient,
+  onDeleteClient,
 }: ProjectModalProps) {
   const [formData, setFormData] = useState<VideoProject>({
     id: "",
@@ -57,6 +64,12 @@ export default function ProjectModal({
   const [isUploading, setIsUploading] = useState(false);
   const [isFetchingMeta, setIsFetchingMeta] = useState(false);
   const [lastFetchedId, setLastFetchedId] = useState("");
+
+  // New client inline drawer state
+  const [showNewClientDrawer, setShowNewClientDrawer] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientLogo, setNewClientLogo] = useState("/companies/sl-logo.png");
+  const [isSavingClient, setIsSavingClient] = useState(false);
 
   useEffect(() => {
     if (project) {
@@ -87,6 +100,9 @@ export default function ProjectModal({
       });
       setLastFetchedId("");
     }
+    setShowNewClientDrawer(false);
+    setNewClientName("");
+    setNewClientLogo("/companies/sl-logo.png");
   }, [project, isOpen, availableCategories]);
 
   // Fetch YouTube Metadata
@@ -183,7 +199,43 @@ export default function ProjectModal({
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, targetField: "client_image" | "gallery") => {
+  const handleCreateAndSelectClient = async () => {
+    if (!newClientName.trim()) {
+      toast.error("Client name is required");
+      return;
+    }
+
+    setIsSavingClient(true);
+    const newClient: Client = {
+      id: `client-${Date.now()}`,
+      name: newClientName.trim(),
+      logo: newClientLogo.trim() || "/companies/sl-logo.png",
+    };
+
+    try {
+      if (onAddNewClient) {
+        await onAddNewClient(newClient);
+      }
+      setFormData((prev) => ({
+        ...prev,
+        client_name: newClient.name,
+        client_image: newClient.logo,
+      }));
+      setShowNewClientDrawer(false);
+      setNewClientName("");
+      setNewClientLogo("/companies/sl-logo.png");
+      toast.success(`Client "${newClient.name}" created and applied to project!`);
+    } catch {
+      toast.error("Failed to save new client");
+    } finally {
+      setIsSavingClient(false);
+    }
+  };
+
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    targetField: "client_image" | "gallery" | "new_client_logo"
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -201,6 +253,8 @@ export default function ProjectModal({
 
       if (targetField === "client_image") {
         setFormData((prev) => ({ ...prev, client_image: data.url }));
+      } else if (targetField === "new_client_logo") {
+        setNewClientLogo(data.url);
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -525,12 +579,185 @@ export default function ProjectModal({
             </div>
           </div>
 
-          {/* Client Details Row */}
-          <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-300">
-              Client & Testimonial Info
-            </h4>
-            <div className="grid sm:grid-cols-2 gap-4">
+          {/* Client Details & Selector Row */}
+          <div className="p-5 rounded-3xl bg-white/[0.02] border border-white/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                  <Building2 size={15} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-white">
+                    Client & Brand Attribution
+                  </h4>
+                  <p className="text-[11px] text-gray-400">
+                    Pick a trusted client brand or enter custom attribution details
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewClientDrawer(!showNewClientDrawer)}
+                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 font-medium cursor-pointer px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
+              >
+                <Plus size={13} />
+                <span>{showNewClientDrawer ? "Close Form" : "Create New Client"}</span>
+              </button>
+            </div>
+
+            {/* Visual Client Picker Grid */}
+            {availableClients && availableClients.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-[11px] font-semibold text-gray-300">
+                    Select Client Logo & Name:
+                  </label>
+                  {formData.client_name && (
+                    <span className="text-[11px] text-blue-400 font-medium">
+                      Active: <strong className="text-white">{formData.client_name}</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-52 overflow-y-auto custom-scrollbar p-1">
+                  {availableClients.map((client) => {
+                    const isSelected =
+                      (formData.client_name &&
+                        formData.client_name.toLowerCase().trim() === client.name.toLowerCase().trim()) ||
+                      (formData.client_image && formData.client_image === client.logo);
+
+                    return (
+                      <div
+                        key={client.id}
+                        onClick={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            client_name: client.name,
+                            client_image: client.logo,
+                          }));
+                          toast.success(`Selected client "${client.name}"`);
+                        }}
+                        className={`group relative p-2.5 rounded-2xl border transition-all flex items-center gap-2.5 cursor-pointer ${
+                          isSelected
+                            ? "bg-blue-600/20 border-blue-500/70 shadow-lg shadow-blue-900/30 text-white"
+                            : "bg-white/[0.03] border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-gray-300"
+                        }`}
+                      >
+                        <div className="relative w-8 h-8 rounded-xl bg-white/10 p-1 flex items-center justify-center overflow-hidden border border-white/10 flex-shrink-0">
+                          <Image
+                            src={client.logo || "/placeholder.svg"}
+                            alt={client.name}
+                            fill
+                            unoptimized
+                            className="object-contain p-0.5"
+                          />
+                        </div>
+                        <span className="text-xs font-semibold truncate flex-1">{client.name}</span>
+                        {isSelected && (
+                          <div className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                            <Check size={10} />
+                          </div>
+                        )}
+                        {onDeleteClient && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteClient(client.id, client.name);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 text-gray-400 hover:text-red-300 rounded transition-all ml-auto cursor-pointer"
+                            title={`Remove client "${client.name}"`}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Inline New Client Creator Drawer */}
+            {showNewClientDrawer && (
+              <div className="p-4 rounded-2xl bg-blue-950/20 border border-blue-500/30 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
+                    <Building2 size={14} />
+                    Create New Client / Brand
+                  </h5>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientDrawer(false)}
+                    className="text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">
+                      Client Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="e.g. Netflix or Stack Learner"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-300 mb-1">
+                      Client Logo Path / URL *
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newClientLogo}
+                        onChange={(e) => setNewClientLogo(e.target.value)}
+                        placeholder="/companies/logo.png"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      />
+                      <label className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium cursor-pointer border border-white/10 flex items-center gap-1">
+                        {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                        <span>Upload</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => handleFileUpload(e, "new_client_logo")}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClientDrawer(false)}
+                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateAndSelectClient}
+                    disabled={isSavingClient || !newClientName.trim()}
+                    className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-md flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSavingClient ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
+                    <span>Save & Select Client</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Active Client Fields / Manual Override */}
+            <div className="grid sm:grid-cols-2 gap-4 pt-2 border-t border-white/5">
               <div>
                 <label className="block text-xs font-semibold text-gray-300 mb-1.5">
                   Client / Channel Name
@@ -549,6 +776,15 @@ export default function ProjectModal({
                   Client Logo Path / URL
                 </label>
                 <div className="flex gap-2">
+                  <div className="relative w-9 h-9 rounded-xl bg-white/5 p-1 flex items-center justify-center overflow-hidden border border-white/10 flex-shrink-0">
+                    <Image
+                      src={formData.client_image || "/placeholder.svg"}
+                      alt="Logo preview"
+                      fill
+                      unoptimized
+                      className="object-contain p-0.5"
+                    />
+                  </div>
                   <input
                     type="text"
                     value={formData.client_image}

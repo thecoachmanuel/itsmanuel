@@ -469,7 +469,35 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Clients Actions
+  // Clients Actions with instant auto-save to MongoDB
+  const handleAddNewClientDirectly = async (newClient: Client) => {
+    if (!content) return;
+    const updatedClients = [...content.clients, newClient];
+    setContent({ ...content, clients: updatedClients });
+
+    const toastId = toast.loading(`Saving new client "${newClient.name}"...`);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { clients: updatedClients },
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) setContent(result.content);
+        setHasUnsavedChanges(false);
+        toast.success(`Client "${newClient.name}" saved & published live!`, { id: toastId });
+      } else {
+        toast.error(result.error || "Failed to save client", { id: toastId });
+      }
+    } catch {
+      toast.error("Network error while saving client", { id: toastId });
+    }
+  };
+
   const handleAddClient = () => {
     if (!content) return;
     const newClient: Client = {
@@ -477,12 +505,42 @@ export default function AdminDashboardPage() {
       name: "New Client",
       logo: "/companies/sl-logo.png",
     };
-    updateContent("clients", [...content.clients, newClient]);
+    handleAddNewClientDirectly(newClient);
   };
 
-  const handleDeleteClient = (id: string) => {
+  const handleDeleteClient = async (id: string, clientName?: string) => {
     if (!content) return;
-    updateContent("clients", content.clients.filter((c) => c.id !== id));
+    const client = content.clients.find((c) => c.id === id);
+    const displayName = clientName || client?.name || "Client";
+
+    if (!confirm(`Are you sure you want to delete client "${displayName}"?`)) {
+      return;
+    }
+
+    const updatedClients = content.clients.filter((c) => c.id !== id);
+    setContent({ ...content, clients: updatedClients });
+
+    const toastId = toast.loading(`Deleting client "${displayName}"...`);
+    try {
+      const res = await fetch("/api/admin/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "partial",
+          data: { clients: updatedClients },
+        }),
+      });
+      const result = await res.json();
+      if (res.ok) {
+        if (result.content) setContent(result.content);
+        setHasUnsavedChanges(false);
+        toast.success(`Client "${displayName}" deleted & website updated!`, { id: toastId });
+      } else {
+        toast.error(result.error || "Failed to delete client", { id: toastId });
+      }
+    } catch {
+      toast.error("Network error while deleting client", { id: toastId });
+    }
   };
 
   // Services Actions
@@ -1564,12 +1622,12 @@ export default function AdminDashboardPage() {
                 <div>
                   <h2 className="text-xl font-bold text-white">Clients & Trusted Logos</h2>
                   <p className="text-xs text-gray-400 mt-1">
-                    Manage the brands, companies, and logos in the animated marquee carousel.
+                    Manage the brands, companies, and logos in the animated marquee carousel and project attribution ({content.clients.length} Total).
                   </p>
                 </div>
                 <button
                   onClick={handleAddClient}
-                  className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                  className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
                 >
                   <Plus size={15} />
                   <span>Add Client</span>
@@ -1580,59 +1638,71 @@ export default function AdminDashboardPage() {
                 {content.clients.map((c, idx) => (
                   <div
                     key={c.id || idx}
-                    className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3"
+                    className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 space-y-3.5 hover:border-white/20 transition-all shadow-sm"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="relative w-12 h-12 rounded-xl bg-white/5 p-2 flex items-center justify-center overflow-hidden border border-white/10">
+                      <div className="relative w-14 h-14 rounded-2xl bg-white/5 p-2 flex items-center justify-center overflow-hidden border border-white/10 shadow-inner">
                         <Image src={c.logo} alt={c.name} fill unoptimized className="object-contain p-1" />
                       </div>
                       <button
-                        onClick={() => handleDeleteClient(c.id)}
-                        className="p-1 text-gray-400 hover:text-red-400"
+                        onClick={() => handleDeleteClient(c.id, c.name)}
+                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors cursor-pointer"
+                        title={`Delete client "${c.name}"`}
                       >
-                        <Trash2 size={15} />
+                        <Trash2 size={16} />
                       </button>
                     </div>
 
-                    <input
-                      type="text"
-                      value={c.name}
-                      onChange={(e) => {
-                        const updated = [...content.clients];
-                        updated[idx] = { ...updated[idx], name: e.target.value };
-                        updateContent("clients", updated);
-                      }}
-                      placeholder="Client Name"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white"
-                    />
-
-                    <div className="flex gap-2">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                        Client Brand Name
+                      </label>
                       <input
                         type="text"
-                        value={c.logo}
+                        value={c.name}
                         onChange={(e) => {
                           const updated = [...content.clients];
-                          updated[idx] = { ...updated[idx], logo: e.target.value };
+                          updated[idx] = { ...updated[idx], name: e.target.value };
                           updateContent("clients", updated);
                         }}
-                        placeholder="Logo URL or /companies/..."
-                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1 text-[11px] text-gray-300"
+                        placeholder="Client Name"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                       />
-                      <label className="p-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-gray-200 text-xs cursor-pointer flex items-center">
-                        <Upload size={12} />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) =>
-                            handleImageUpload(e, (url) => {
-                              const updated = [...content.clients];
-                              updated[idx] = { ...updated[idx], logo: url };
-                              updateContent("clients", updated);
-                            })
-                          }
-                        />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-gray-400 mb-1">
+                        Logo URL or Upload
                       </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={c.logo}
+                          onChange={(e) => {
+                            const updated = [...content.clients];
+                            updated[idx] = { ...updated[idx], logo: e.target.value };
+                            updateContent("clients", updated);
+                          }}
+                          placeholder="Logo URL or /companies/..."
+                          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-gray-300 focus:outline-none"
+                        />
+                        <label className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-medium cursor-pointer border border-white/10 flex items-center gap-1.5 transition-colors">
+                          <Upload size={13} />
+                          <span>Upload</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) =>
+                              handleImageUpload(e, (url) => {
+                                const updated = [...content.clients];
+                                updated[idx] = { ...updated[idx], logo: url };
+                                updateContent("clients", updated);
+                              })
+                            }
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2160,6 +2230,9 @@ export default function AdminDashboardPage() {
         project={editingProject}
         onSave={handleSaveProject}
         availableCategories={content.categories}
+        availableClients={content.clients}
+        onAddNewClient={handleAddNewClientDirectly}
+        onDeleteClient={handleDeleteClient}
       />
     </div>
   );
