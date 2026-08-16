@@ -22,6 +22,7 @@ import {
   Youtube,
   Eye,
   EyeOff,
+  Printer,
 } from "lucide-react";
 import {
   ResumeData,
@@ -40,12 +41,14 @@ interface ResumeEditorProps {
   data: ResumeData;
   onChange: (updated: ResumeData) => void;
   onImportFromPortfolio?: () => void;
+  onExportPdf?: () => void;
 }
 
 export default function ResumeEditor({
   data,
   onChange,
   onImportFromPortfolio,
+  onExportPdf,
 }: ResumeEditorProps) {
   const [activeTab, setActiveTab] = useState<string>("personal");
   const [isProjectSyncOpen, setIsProjectSyncOpen] = useState(false);
@@ -285,18 +288,31 @@ export default function ResumeEditor({
               title="Auto-fill projects, tools and about data from your live portfolio"
             >
               <Sparkles size={13} className="text-amber-400" />
-              <span>Sync from Portfolio</span>
+              <span className="hidden sm:inline">Sync Portfolio</span>
             </button>
           )}
 
           <button
             type="button"
+            onClick={() => {
+              if (onExportPdf) onExportPdf();
+              else window.print();
+            }}
+            className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-medium border border-white/15 flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+            title="Export standard ATS PDF / Print"
+          >
+            <Printer size={13} />
+            <span>Export PDF</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleResetToDefault}
-            className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-medium border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-medium border border-white/10 flex items-center gap-1.5 transition-colors cursor-pointer"
             title="Reset fields to standard default ATS template"
           >
             <RotateCcw size={12} />
-            <span>Reset</span>
+            <span className="hidden sm:inline">Reset</span>
           </button>
         </div>
       </div>
