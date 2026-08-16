@@ -140,7 +140,6 @@ export const defaultResumeData: ResumeData = {
       institution: "University of Lagos",
       location: "Lagos, Nigeria",
       graduationYear: "2020",
-      honors: "Second Class Upper Honors",
     },
   ],
   certifications: [

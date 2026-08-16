@@ -453,15 +453,24 @@ export default function ResumePreview({
             line-height: 1.5 !important;
           }
 
-          /* Section Headings in Print */
+          /* Allow sections to flow naturally across page breaks */
+          .ats-section {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+            margin-bottom: 6pt !important;
+          }
+
+          /* Prevent section title from being orphaned at the bottom of a page */
           #ats-resume-sheet h2 {
+            break-after: avoid !important;
+            page-break-after: avoid !important;
             font-size: 13pt !important;
             font-weight: bold !important;
             text-transform: uppercase !important;
             border-bottom: 1pt solid #000000 !important;
             padding-bottom: 2pt !important;
-            margin-top: 10pt !important;
-            margin-bottom: 5pt !important;
+            margin-top: 8pt !important;
+            margin-bottom: 4pt !important;
             line-height: 1.3 !important;
             letter-spacing: 0.5pt !important;
           }
@@ -476,7 +485,7 @@ export default function ResumePreview({
           /* Bullet Lists */
           #ats-resume-sheet ul {
             margin-top: 2pt !important;
-            margin-bottom: 5pt !important;
+            margin-bottom: 4pt !important;
             padding-left: 18pt !important;
             list-style-type: disc !important;
           }
@@ -497,18 +506,11 @@ export default function ResumePreview({
           #ats-resume-sheet a {
             color: #000000 !important;
             text-decoration: underline !important;
-            font-size: 11.5pt !important;
+            font-size: 11pt !important;
           }
 
           .no-print {
             display: none !important;
-          }
-
-          .ats-entry,
-          .ats-section {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            margin-bottom: 6pt !important;
           }
 
           /* Standard Letter Portrait Margin (0.75in / 19mm standard ATS) */
