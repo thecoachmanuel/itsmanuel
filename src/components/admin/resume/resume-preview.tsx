@@ -261,9 +261,10 @@ export default function ResumePreview({
                               href={proj.link}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-blue-700 hover:underline"
+                              className="text-[11px] text-blue-700 hover:text-blue-900 font-medium underline underline-offset-2 ml-1"
+                              title={`Open Video: ${proj.link}`}
                             >
-                              [View Video]
+                              [Video Link: {proj.link.replace(/^https?:\/\/(www\.)?/, "")}]
                             </a>
                           )}
                         </div>

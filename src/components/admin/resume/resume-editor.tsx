@@ -18,6 +18,8 @@ import {
   RefreshCw,
   ExternalLink,
   Layers,
+  Database,
+  Youtube,
 } from "lucide-react";
 import {
   ResumeData,
@@ -30,6 +32,7 @@ import {
 } from "@/types/resume";
 import { toast } from "sonner";
 import { defaultResumeData } from "@/lib/default-resume";
+import ProjectSyncModal from "./project-sync-modal";
 
 interface ResumeEditorProps {
   data: ResumeData;
@@ -43,6 +46,7 @@ export default function ResumeEditor({
   onImportFromPortfolio,
 }: ResumeEditorProps) {
   const [activeTab, setActiveTab] = useState<string>("personal");
+  const [isProjectSyncOpen, setIsProjectSyncOpen] = useState(false);
 
   // State for adding skill tags
   const [newSkillInputs, setNewSkillInputs] = useState<{ [catId: string]: string }>({});
@@ -615,22 +619,55 @@ export default function ResumeEditor({
         {/* ========================================================================= */}
         {activeTab === "projects" && (
           <div className="space-y-5 animate-in fade-in duration-200">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-white">Key Projects & Client Highlights</h3>
+                <h3 className="text-sm font-bold text-white">Key Projects & Client Deliverables</h3>
                 <p className="text-xs text-gray-400">
-                  Highlight significant video projects, technical tools utilized, and metrics achieved.
+                  Highlight significant video projects, YouTube links, technical tools utilized, and metrics achieved.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={addProject}
-                className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
-              >
-                <Plus size={14} />
-                <span>Add Project</span>
-              </button>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setIsProjectSyncOpen(true)}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-sm transition-colors"
+                  title="Import and sync projects directly from your MongoDB database"
+                >
+                  <Database size={13} className="text-blue-400" />
+                  <Sparkles size={12} className="text-amber-400" />
+                  <span>Sync MongoDB Projects</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={addProject}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20"
+                >
+                  <Plus size={14} />
+                  <span>Add Project</span>
+                </button>
+              </div>
             </div>
+
+            {/* Project Sync Modal */}
+            <ProjectSyncModal
+              isOpen={isProjectSyncOpen}
+              onClose={() => setIsProjectSyncOpen(false)}
+              onApplyProjects={(syncedProjects, append) => {
+                if (append) {
+                  onChange({
+                    ...data,
+                    projects: [...(data.projects || []), ...syncedProjects],
+                  });
+                } else {
+                  onChange({
+                    ...data,
+                    projects: syncedProjects,
+                  });
+                }
+              }}
+            />
 
             <div className="space-y-4">
               {(data.projects || []).map((proj, pIdx) => (

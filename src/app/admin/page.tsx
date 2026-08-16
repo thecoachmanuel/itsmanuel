@@ -38,6 +38,7 @@ import ResumePreview from "@/components/admin/resume/resume-preview";
 import ATSScoreCard from "@/components/admin/resume/ats-score-card";
 import { ResumeData } from "@/types/resume";
 import { defaultResumeData } from "@/lib/default-resume";
+import { mapAllVideoProjectsToResume } from "@/lib/project-sync";
 import { SiteContent, ContactMessage, TechnicalSkill } from "@/types/content";
 import { VideoProject, Client } from "@/types/videos";
 import Image from "next/image";
@@ -168,17 +169,10 @@ export default function AdminDashboardPage() {
       return;
     }
 
-    const importedProjects = (content.projects || []).slice(0, 4).map((p: any) => ({
-      id: `proj-${p.id}`,
-      name: p.video_title || "Video Project",
-      role: "Lead Video Editor",
-      tools: p.software_used || ["DaVinci Resolve", "After Effects"],
-      link: `https://www.itsmanuel.me/project/${p.id}`,
-      description: p.video_description || "High-retention video production with custom pacing and graphics.",
-      highlights: [
-        `Edited and produced for ${p.client_name || "Enterprise Client"} with duration ${p.duration || "5:00"}.`,
-      ],
-    }));
+    const importedProjects = mapAllVideoProjectsToResume(content.projects || [], {
+      linkFormat: "youtube",
+      maxProjects: 6,
+    });
 
     const techSkills = (content.skills?.technicalSkills || []).map((t: any) => t.name);
     const specializations = (content.skills?.specializations || []).flatMap((s: any) => s.skills || []);
