@@ -27,10 +27,17 @@ import {
   Lock,
   ImageIcon,
   Wrench,
+  FileText,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import AdminSidebar from "@/components/admin/admin-sidebar";
 import ProjectModal from "@/components/admin/project-modal";
+import ResumeEditor from "@/components/admin/resume/resume-editor";
+import ResumePreview from "@/components/admin/resume/resume-preview";
+import ATSScoreCard from "@/components/admin/resume/ats-score-card";
+import { ResumeData } from "@/types/resume";
+import { defaultResumeData } from "@/lib/default-resume";
 import { SiteContent, ContactMessage, TechnicalSkill } from "@/types/content";
 import { VideoProject, Client } from "@/types/videos";
 import Image from "next/image";
@@ -71,15 +78,21 @@ export default function AdminDashboardPage() {
   const [currentPasswordInput, setCurrentPasswordInput] = useState("");
   const [isUpdatingCreds, setIsUpdatingCreds] = useState(false);
 
-  // Fetch Full Site Content, DB status, Contact Messages, and Admin Credentials
+  // Resume Data State
+  const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData);
+  const [isSavingResume, setIsSavingResume] = useState(false);
+  const [hasResumeChanges, setHasResumeChanges] = useState(false);
+
+  // Fetch Full Site Content, DB status, Contact Messages, Admin Credentials, and Resume
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [contentRes, dbRes, messagesRes, credsRes] = await Promise.all([
+      const [contentRes, dbRes, messagesRes, credsRes, resumeRes] = await Promise.all([
         fetch("/api/admin/content"),
         fetch("/api/admin/db-status"),
         fetch("/api/admin/messages"),
         fetch("/api/admin/credentials"),
+        fetch("/api/admin/resume"),
       ]);
 
       const contentData = await contentRes.json();
@@ -106,6 +119,13 @@ export default function AdminDashboardPage() {
         setCurrentAdminUsername(credsData.username);
         setNewUsernameInput(credsData.username);
       }
+
+      if (resumeRes.ok) {
+        const resumeJson = await resumeRes.json();
+        if (resumeJson.resume) {
+          setResumeData(resumeJson.resume);
+        }
+      }
     } catch {
       toast.error("Failed to connect to backend server");
     } finally {
@@ -116,6 +136,83 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Save ATS Resume
+  const handleSaveResume = async () => {
+    setIsSavingResume(true);
+    const toastId = toast.loading("Saving ATS Resume...");
+    try {
+      const res = await fetch("/api/admin/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resumeData),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setHasResumeChanges(false);
+        toast.success("✨ ATS Resume saved & updated live!", { id: toastId });
+      } else {
+        toast.error(data.error || "Failed to save resume", { id: toastId });
+      }
+    } catch {
+      toast.error("Network error while saving resume", { id: toastId });
+    } finally {
+      setIsSavingResume(false);
+    }
+  };
+
+  // Sync / Import Data from Portfolio to Resume
+  const handleImportFromPortfolioForAdmin = () => {
+    if (!content) return;
+    if (!confirm("Import latest projects and skills from your portfolio into the ATS resume?")) {
+      return;
+    }
+
+    const importedProjects = (content.projects || []).slice(0, 4).map((p: any) => ({
+      id: `proj-${p.id}`,
+      name: p.video_title || "Video Project",
+      role: "Lead Video Editor",
+      tools: p.software_used || ["DaVinci Resolve", "After Effects"],
+      link: `https://www.itsmanuel.me/project/${p.id}`,
+      description: p.video_description || "High-retention video production with custom pacing and graphics.",
+      highlights: [
+        `Edited and produced for ${p.client_name || "Enterprise Client"} with duration ${p.duration || "5:00"}.`,
+      ],
+    }));
+
+    const techSkills = (content.skills?.technicalSkills || []).map((t: any) => t.name);
+    const specializations = (content.skills?.specializations || []).flatMap((s: any) => s.skills || []);
+
+    const importedSkills = [
+      {
+        id: "cat-imported-1",
+        category: "Core Editing & Tools",
+        skills: techSkills.length > 0 ? techSkills : ["DaVinci Resolve Studio", "Premiere Pro", "After Effects"],
+      },
+      {
+        id: "cat-imported-2",
+        category: "Specializations & Workflow",
+        skills: specializations.length > 0 ? specializations : ["Color Grading", "Audio Mixing", "Motion Graphics"],
+      },
+    ];
+
+    setResumeData((prev) => ({
+      ...prev,
+      personalInfo: {
+        ...prev.personalInfo,
+        fullName: `${content.about?.profile?.firstName || "Emmanuel"} ${content.about?.profile?.lastName || "Olaitan"}`.trim(),
+        professionalTitle: content.about?.profile?.title || prev.personalInfo.professionalTitle,
+        email: content.contact?.email || prev.personalInfo.email,
+        location: content.contact?.location || prev.personalInfo.location,
+        summary: content.general?.siteDescription || prev.personalInfo.summary,
+      },
+      projects: importedProjects.length > 0 ? importedProjects : prev.projects,
+      skills: importedSkills,
+    }));
+
+    setHasResumeChanges(true);
+    toast.success("✨ Successfully imported portfolio projects & skills into resume!");
+  };
 
   // Save changes to MongoDB
   const handleSave = async () => {
@@ -821,6 +918,67 @@ export default function AdminDashboardPage() {
                     <ExternalLink size={15} />
                     <span>View Public Portfolio</span>
                   </Link>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================================================================ */}
+          {/* 1.5. ATS RESUME BUILDER TAB */}
+          {/* ================================================================ */}
+          {activeSection === "resume" && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold text-white">ATS Resume Builder & Exporter</h2>
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                      Standard ATS
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Build and manage your ATS-compliant resume, evaluate compliance score, and export to PDF.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Link
+                    href="/admin/resume"
+                    className="py-2 px-3.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 hover:text-white border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    title="Open in dedicated fullscreen ATS workspace"
+                  >
+                    <ExternalLink size={13} />
+                    <span>Open Dedicated Workspace</span>
+                  </Link>
+
+                  <button
+                    onClick={handleSaveResume}
+                    disabled={isSavingResume}
+                    className="py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-md shadow-blue-600/20 disabled:opacity-50"
+                  >
+                    {isSavingResume ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    <span>Save Resume</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid: Editor on Left, Live Sheet Preview on Right */}
+              <div className="grid xl:grid-cols-12 gap-6 items-start">
+                <div className="xl:col-span-6 space-y-6">
+                  <ResumeEditor
+                    data={resumeData}
+                    onChange={(updated) => {
+                      setResumeData(updated);
+                      setHasResumeChanges(true);
+                    }}
+                    onImportFromPortfolio={handleImportFromPortfolioForAdmin}
+                  />
+
+                  <ATSScoreCard data={resumeData} />
+                </div>
+
+                <div className="xl:col-span-6 sticky top-6">
+                  <ResumePreview data={resumeData} />
                 </div>
               </div>
             </div>

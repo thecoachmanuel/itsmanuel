@@ -18,6 +18,7 @@ import {
   X,
   Database,
   Inbox,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ export interface NavSection {
 
 export const adminSections: NavSection[] = [
   { id: "overview", name: "Overview & Stats", icon: LayoutDashboard },
+  { id: "resume", name: "ATS Resume Builder", icon: FileText },
   { id: "messages", name: "Messages & Inquiries", icon: Inbox, badgeKey: "unreadMessages" },
   { id: "hero", name: "Hero & Intro", icon: Sparkles },
   { id: "projects", name: "Projects (CRUD)", icon: Film },
