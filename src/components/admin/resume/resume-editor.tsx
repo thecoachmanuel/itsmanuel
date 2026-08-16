@@ -20,6 +20,8 @@ import {
   Layers,
   Database,
   Youtube,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   ResumeData,
@@ -615,19 +617,53 @@ export default function ResumeEditor({
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 3: KEY PROJECTS */}
+        {/* TAB 3: KEY PROJECTS & CLIENT DELIVERABLES */}
         {/* ========================================================================= */}
         {activeTab === "projects" && (
           <div className="space-y-5 animate-in fade-in duration-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-white">Key Projects & Client Deliverables</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white">Key Projects & Client Deliverables</h3>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                      data.settings.showProjects
+                        ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                        : "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    }`}
+                  >
+                    {data.settings.showProjects ? "Shown on Resume" : "Hidden from Resume"}
+                  </span>
+                </div>
                 <p className="text-xs text-gray-400">
                   Highlight significant video projects, YouTube links, technical tools utilized, and metrics achieved.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Hide / Unhide Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !data.settings.showProjects;
+                    updateSettings("showProjects", nextVal);
+                    if (nextVal) {
+                      toast.success("✨ Key Projects & Deliverables section is now visible on your resume");
+                    } else {
+                      toast.info("Key Projects & Deliverables section is now hidden from your resume");
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl border font-semibold text-xs flex items-center gap-1.5 cursor-pointer transition-all shadow-sm ${
+                    data.settings.showProjects
+                      ? "bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                      : "bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border-amber-500/30"
+                  }`}
+                  title={data.settings.showProjects ? "Click to hide section from PDF/Resume" : "Click to unhide section on PDF/Resume"}
+                >
+                  {data.settings.showProjects ? <Eye size={13} /> : <EyeOff size={13} />}
+                  <span>{data.settings.showProjects ? "Hide Section" : "Unhide Section"}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => setIsProjectSyncOpen(true)}
@@ -649,6 +685,28 @@ export default function ResumeEditor({
                 </button>
               </div>
             </div>
+
+            {/* Hidden Section Notice Banner */}
+            {!data.settings.showProjects && (
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-200">
+                <div className="flex items-center gap-2.5">
+                  <EyeOff size={18} className="text-amber-400 flex-shrink-0" />
+                  <div>
+                    <strong className="font-bold text-amber-300">Section is Hidden:</strong> Key Projects & Client Deliverables are excluded from the live resume and PDF print export.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateSettings("showProjects", true);
+                    toast.success("✨ Key Projects & Deliverables section unhidden!");
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-amber-500/25 hover:bg-amber-500/35 text-amber-200 border border-amber-500/40 font-semibold whitespace-nowrap cursor-pointer transition-colors"
+                >
+                  Unhide Section
+                </button>
+              </div>
+            )}
 
             {/* Project Sync Modal */}
             <ProjectSyncModal
@@ -1104,7 +1162,7 @@ export default function ResumeEditor({
                 {[
                   { key: "showSummary", label: "Professional Summary" },
                   { key: "showExperience", label: "Work Experience" },
-                  { key: "showProjects", label: "Key Projects" },
+                  { key: "showProjects", label: "Key Projects & Deliverables" },
                   { key: "showSkills", label: "Technical Skills" },
                   { key: "showEducation", label: "Education" },
                   { key: "showCertifications", label: "Certifications" },
